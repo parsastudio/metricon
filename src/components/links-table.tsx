@@ -128,8 +128,8 @@ export function LinksTable({
       result.sort((a, b) => b.clicksCount - a.clicksCount);
     } else {
       result.sort((a, b) => {
-        const dateA = a.expiresAt ? new Date(a.expiresAt).getTime() : 0;
-        const dateB = b.expiresAt ? new Date(b.expiresAt).getTime() : 0;
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
     }

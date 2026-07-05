@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { links, workspaces, failedAttempts } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
-import { getClientIp } from "@/geoip";
+import { getClientIp } from "@/lib/geoip";
 import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
 
 export async function generateUnlockSignature(

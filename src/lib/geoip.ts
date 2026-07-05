@@ -85,18 +85,19 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
     },
   ];
 
-  for (const service of services) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 600);
-      const country = await service(rawIp, controller.signal);
-      clearTimeout(timeoutId);
-      if (country) {
-        return country;
-      }
-    } catch {
-      continue;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 800);
+
+  try {
+    const country = await Promise.any(
+      services.map((service) => service(rawIp, controller.signal))
+    );
+    clearTimeout(timeoutId);
+    if (country) {
+      return country;
     }
+  } catch {
+    clearTimeout(timeoutId);
   }
 
   return "Unknown";

@@ -110,6 +110,8 @@ export const linkSchema = z.object({
   androidUrl: z.string().nullable().optional(),
   desktopUrl: z.string().nullable().optional(),
   geoRouting: z.record(z.string(), z.string().url()).nullable().optional(),
+  createdAt: z.union([z.date(), z.string()]).optional(),
+  updatedAt: z.union([z.date(), z.string()]).optional(),
 });
 
 export type LinkItem = z.infer<typeof linkSchema>;
