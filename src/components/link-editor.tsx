@@ -77,7 +77,7 @@ export function LinkEditor({
         originalUrl,
         title,
         password: password || undefined,
-        expiresAt: expiresAt || undefined,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
         iosUrl: iosUrl || undefined,
         androidUrl: androidUrl || undefined,
         geoRouting: Object.keys(geoRouting).length > 0 ? geoRouting : undefined,

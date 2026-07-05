@@ -170,7 +170,12 @@ export async function syncLinksClicks() {
       FROM analytics
       WHERE analytics.link_id = links.id
     ), 0),
-    updated_at = NOW();
+    updated_at = NOW()
+    WHERE id IN (
+      SELECT DISTINCT link_id
+      FROM analytics
+      WHERE timestamp >= NOW() - INTERVAL '24 hours'
+    );
   `);
 }
 

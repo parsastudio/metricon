@@ -123,11 +123,16 @@ export function useOfflineSync(
   useEffect(() => {
     async function loadCache() {
       try {
-        const cached = await get<LinkItem[]>(`links_cache_${workspaceId}`);
-        if (cached) {
-          setLinks(cached);
-        } else {
+        if (navigator.onLine) {
           setLinks(initialLinks);
+          await set(`links_cache_${workspaceId}`, initialLinks);
+        } else {
+          const cached = await get<LinkItem[]>(`links_cache_${workspaceId}`);
+          if (cached) {
+            setLinks(cached);
+          } else {
+            setLinks(initialLinks);
+          }
         }
       } catch {
         setLinks(initialLinks);

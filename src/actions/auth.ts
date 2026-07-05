@@ -13,6 +13,7 @@ import { loginSchema } from "@/lib/validations";
 import { IS_DEMO_MODE } from "@/core/config";
 import { sendEmail } from "@/lib/resend";
 import { getAppOrigin } from "@/lib/network";
+import { hashSha256 } from "@/lib/crypto";
 
 async function generateUniquePrefix(): Promise<string> {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -56,12 +57,13 @@ export async function rotateApiKey() {
   if (!user) {
     throw new Error("UNAUTHORIZED");
   }
-  const newApiKey = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+  const newApiKeyRaw = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+  const hashedKey = await hashSha256(newApiKeyRaw);
   await db
     .update(users)
-    .set({ apiKey: newApiKey, updatedAt: new Date() })
+    .set({ apiKey: hashedKey, updatedAt: new Date() })
     .where(eq(users.id, user.id));
-  return { success: true, apiKey: newApiKey };
+  return { success: true, apiKey: newApiKeyRaw };
 }
 
 export async function loginUser(email: string, name?: string) {
@@ -84,14 +86,15 @@ export async function loginUser(email: string, name?: string) {
       const workspaceSlug =
         cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-") + "-org";
       const shortPrefix = await generateUniquePrefix();
-      const initialApiKey = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+      const initialApiKeyRaw = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+      const hashedKey = await hashSha256(initialApiKeyRaw);
 
       await db.transaction(async (tx) => {
         await tx.insert(users).values({
           id: userId,
           email: cleanEmail,
           name: name || cleanEmail.split("@")[0],
-          apiKey: initialApiKey,
+          apiKey: hashedKey,
         });
 
         await tx.insert(workspaces).values({
@@ -117,7 +120,7 @@ export async function loginUser(email: string, name?: string) {
         email: cleanEmail,
         name: name || cleanEmail.split("@")[0],
         image: null,
-        apiKey: initialApiKey,
+        apiKey: hashedKey,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -200,14 +203,15 @@ export async function verifyMagicToken(token: string) {
     const workspaceSlug =
       tokenRecord.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-") + "-org";
     const shortPrefix = await generateUniquePrefix();
-    const initialApiKey = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+    const initialApiKeyRaw = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+    const hashedKey = await hashSha256(initialApiKeyRaw);
 
     await db.transaction(async (tx) => {
       await tx.insert(users).values({
         id: userId,
         email: tokenRecord.email,
         name: tokenRecord.email.split("@")[0],
-        apiKey: initialApiKey,
+        apiKey: hashedKey,
       });
 
       await tx.insert(workspaces).values({
@@ -233,7 +237,7 @@ export async function verifyMagicToken(token: string) {
       email: tokenRecord.email,
       name: tokenRecord.email.split("@")[0],
       image: null,
-      apiKey: initialApiKey,
+      apiKey: hashedKey,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

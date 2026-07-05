@@ -33,6 +33,7 @@ export async function getWorkspaceMembers(workspaceId: string) {
 }
 
 export async function getPendingWorkspaceInvitations(workspaceId: string) {
+  await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
   return await db
     .select()
     .from(workspaceInvitations)

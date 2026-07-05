@@ -227,6 +227,6 @@ export const analyticsRelations = relations(analytics, ({ one }) => ({
 export const failedAttemptsRelations = relations(failedAttempts, ({ one }) => ({
   link: one(links, {
     fields: [failedAttempts.linkId],
-    references: [failedAttempts.id],
+    references: [links.id],
   }),
 }));

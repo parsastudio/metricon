@@ -37,7 +37,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   ];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300);
+  const timeoutId = setTimeout(() => controller.abort(), 1200);
 
   try {
     const country = await Promise.any(

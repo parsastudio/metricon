@@ -96,7 +96,7 @@ export function LinkCreator({
         shortCode,
         title,
         password: password || undefined,
-        expiresAt: expiresAt || undefined,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
         maxClicks: maxClicks || undefined,
         iosUrl: iosUrl || undefined,
         androidUrl: androidUrl || undefined,

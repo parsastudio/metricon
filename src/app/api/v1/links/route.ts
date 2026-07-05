@@ -6,16 +6,18 @@ import { getSessionUser } from "@/actions/auth";
 import { createLinkSchema } from "@/lib/validations";
 import { getClientIp } from "@/lib/geoip";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { hashSha256 } from "@/lib/crypto";
 
 async function getAuthorizedUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7).trim();
     if (token) {
+      const hashedToken = await hashSha256(token);
       const [user] = await db
         .select({ id: users.id })
         .from(users)
-        .where(eq(users.apiKey, token))
+        .where(eq(users.apiKey, hashedToken))
         .limit(1);
       return user?.id || null;
     }
@@ -134,7 +136,12 @@ export async function POST(req: Request) {
     const [existingShortCode] = await db
       .select()
       .from(links)
-      .where(eq(links.shortCode, cleanShortCode))
+      .where(
+        and(
+          eq(links.workspaceId, validated.workspaceId),
+          eq(links.shortCode, cleanShortCode)
+        )
+      )
       .limit(1);
 
     if (existingShortCode) {
@@ -220,7 +227,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
 
-    const deleted = await db
+    await db
       .delete(links)
       .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
 
