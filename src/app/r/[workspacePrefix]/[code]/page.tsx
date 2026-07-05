@@ -10,6 +10,7 @@ import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
 import { resolveCountryFromHeaders, getClientIp } from "@/lib/geoip";
 import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
+import { generateUnlockSignature } from "@/actions/links-security";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -17,15 +18,6 @@ export const dynamic = "force-dynamic";
 interface PageProps {
   params: Promise<{ workspacePrefix: string; code: string }>;
   searchParams: Promise<{ __country?: string; __device?: string }>;
-}
-
-async function generateUnlockSignature(
-  workspacePrefix: string,
-  code: string
-): Promise<string> {
-  const secret =
-    process.env.STRIPE_SECRET_KEY || "fallback_encryption_token_2026";
-  return await hashSha256(`${workspacePrefix}:${code}:${secret}:unlocked`);
 }
 
 export default async function RedirectPage({

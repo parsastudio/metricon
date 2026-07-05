@@ -42,6 +42,9 @@ export const workspaces = pgTable(
     shortPrefixIdx: uniqueIndex("workspaces_short_prefix_idx").on(
       table.shortPrefix
     ),
+    stripeSubscriptionIdIdx: index("workspaces_stripe_sub_idx").on(
+      table.stripeSubscriptionId
+    ),
   })
 );
 
