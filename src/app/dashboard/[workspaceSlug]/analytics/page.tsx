@@ -2,13 +2,33 @@ import { getSessionUser } from "@/actions/auth";
 import { getWorkspaces } from "@/actions/workspace";
 import { getWorkspaceAnalytics } from "@/actions/analytics";
 import { KPICards } from "@/components/analytics/kpi-cards";
-import { TimeSeries } from "@/components/analytics/time-series";
-import { BreakdownTables } from "@/components/analytics/breakdown-tables";
 import { ExportButton } from "@/components/analytics/export-button";
 import { SeedButton } from "@/components/analytics/seed-button";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { BarChart3 } from "lucide-react";
 import { redirect } from "next/navigation";
+import dynamic from "next/dynamic";
+import { TimeSeriesSkeleton } from "@/components/analytics/time-series";
+import { BreakdownTablesSkeleton } from "@/components/analytics/breakdown-tables";
+
+const TimeSeries = dynamic(
+  () => import("@/components/analytics/time-series").then((m) => m.TimeSeries),
+  {
+    ssr: false,
+    loading: () => <TimeSeriesSkeleton />,
+  }
+);
+
+const BreakdownTables = dynamic(
+  () =>
+    import("@/components/analytics/breakdown-tables").then(
+      (m) => m.BreakdownTables
+    ),
+  {
+    ssr: false,
+    loading: () => <BreakdownTablesSkeleton />,
+  }
+);
 
 export default async function AnalyticsPage({
   params,

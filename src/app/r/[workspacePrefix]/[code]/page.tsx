@@ -6,15 +6,21 @@ import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { createHash } from "crypto";
 import { after } from "next/server";
+import { IS_DEMO_MODE } from "@/core/config";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ workspacePrefix: string; code: string }>;
+  searchParams: Promise<{ __country?: string; __device?: string }>;
 }
 
-export default async function RedirectPage({ params }: PageProps) {
+export default async function RedirectPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { workspacePrefix, code } = await params;
+  const { __country, __device } = await searchParams;
 
   const [workspace] = await db
     .select()
@@ -61,8 +67,13 @@ export default async function RedirectPage({ params }: PageProps) {
   const ipHash = createHash("sha256").update(rawIp).digest("hex");
 
   let device = "Desktop";
-  if (/mobile/i.test(userAgent)) device = "Mobile";
-  else if (/tablet/i.test(userAgent)) device = "Tablet";
+  if (__device && (process.env.NODE_ENV === "development" || IS_DEMO_MODE)) {
+    device = __device;
+  } else if (/mobile/i.test(userAgent)) {
+    device = "Mobile";
+  } else if (/tablet/i.test(userAgent)) {
+    device = "Tablet";
+  }
 
   let browser = "Unknown";
   if (/chrome/i.test(userAgent)) browser = "Chrome";
@@ -71,7 +82,11 @@ export default async function RedirectPage({ params }: PageProps) {
 
   let country = "Unknown";
   const geoCountry = reqHeaders.get("x-vercel-ip-country");
-  if (geoCountry) country = geoCountry;
+  if (__country && (process.env.NODE_ENV === "development" || IS_DEMO_MODE)) {
+    country = __country;
+  } else if (geoCountry) {
+    country = geoCountry;
+  }
 
   after(() => {
     recordClick(link.id, {

@@ -27,6 +27,32 @@ function getUnicodeFlag(countryCode: string): string {
   }
 }
 
+export function BreakdownTablesSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {[...Array(3)].map((_, i) => (
+        <div
+          key={i}
+          className="bg-card border-border h-[274px] animate-pulse space-y-4 rounded-xl border p-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="bg-muted/70 size-4 rounded" />
+            <div className="bg-muted/70 h-4 w-24 rounded" />
+          </div>
+          <div className="space-y-3">
+            {[...Array(4)].map((_, j) => (
+              <div key={j} className="flex items-center justify-between">
+                <div className="bg-muted/40 h-3 w-28 rounded" />
+                <div className="bg-muted/60 h-4 w-8 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function BreakdownTables({
   countries,
   referrers,

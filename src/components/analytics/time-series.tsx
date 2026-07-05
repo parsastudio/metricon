@@ -14,6 +14,23 @@ interface TimeSeriesProps {
   data: { date: string; clicks: number }[];
 }
 
+export function TimeSeriesSkeleton() {
+  return (
+    <div className="bg-card border-border h-[274px] animate-pulse space-y-4 rounded-xl border p-5">
+      <div className="bg-muted/70 h-4 w-32 rounded" />
+      <div className="flex h-48 w-full items-end justify-between gap-2 pt-4">
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            className="bg-muted/30 w-full rounded-t"
+            style={{ height: `${Math.random() * 60 + 20}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TimeSeries({ data }: TimeSeriesProps) {
   return (
     <div className="bg-card border-border space-y-4 rounded-xl border p-5">

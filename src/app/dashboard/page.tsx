@@ -13,5 +13,5 @@ export default async function DashboardPage() {
     redirect(`/dashboard/${workspaces[0].slug}`);
   }
 
-  redirect("/auth");
+  redirect("/dashboard/onboarding");
 }
