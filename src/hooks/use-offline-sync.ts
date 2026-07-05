@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { get, set, del } from "idb-keyval";
 
 interface OfflineLink {
   id: string;
@@ -44,11 +45,9 @@ export function useOfflineSync(
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   const syncQueue = useCallback(async () => {
-    const queueRaw = localStorage.getItem(`sync_queue_${workspaceId}`);
-    if (!queueRaw) return;
     try {
-      const queue = JSON.parse(queueRaw) as PendingAction[];
-      if (queue.length === 0) return;
+      const queue = await get<PendingAction[]>(`sync_queue_${workspaceId}`);
+      if (!queue || queue.length === 0) return;
       const remainingQueue: PendingAction[] = [];
       for (const action of queue) {
         try {
@@ -72,15 +71,14 @@ export function useOfflineSync(
           remainingQueue.push(action);
         }
       }
-      localStorage.setItem(
-        `sync_queue_${workspaceId}`,
-        JSON.stringify(remainingQueue)
-      );
       if (remainingQueue.length === 0) {
+        await del(`sync_queue_${workspaceId}`);
         toast.success("All offline interactions synchronized with cloud!");
+      } else {
+        await set(`sync_queue_${workspaceId}`, remainingQueue);
       }
     } catch {
-      localStorage.removeItem(`sync_queue_${workspaceId}`);
+      await del(`sync_queue_${workspaceId}`);
     }
   }, [workspaceId, actions]);
 
@@ -107,26 +105,28 @@ export function useOfflineSync(
   }, [workspaceId, syncQueue]);
 
   useEffect(() => {
-    const cached = localStorage.getItem(`links_cache_${workspaceId}`);
-    if (cached) {
+    async function loadCache() {
       try {
-        setLinks(JSON.parse(cached));
+        const cached = await get<OfflineLink[]>(`links_cache_${workspaceId}`);
+        if (cached) {
+          setLinks(cached);
+        } else {
+          setLinks(initialLinks);
+        }
       } catch {
         setLinks(initialLinks);
       }
-    } else {
-      setLinks(initialLinks);
     }
+    loadCache();
   }, [workspaceId, initialLinks]);
 
   const queueAction = useCallback(
-    (action: PendingAction) => {
-      const queueRaw = localStorage.getItem(`sync_queue_${workspaceId}`);
-      const queue = queueRaw ? (JSON.parse(queueRaw) as PendingAction[]) : [];
-      localStorage.setItem(
-        `sync_queue_${workspaceId}`,
-        JSON.stringify([...queue, action])
-      );
+    async (action: PendingAction) => {
+      try {
+        const queue =
+          (await get<PendingAction[]>(`sync_queue_${workspaceId}`)) || [];
+        await set(`sync_queue_${workspaceId}`, [...queue, action]);
+      } catch {}
     },
     [workspaceId]
   );
@@ -151,10 +151,7 @@ export function useOfflineSync(
       };
       const updated = [newLink, ...links];
       setLinks(updated);
-      localStorage.setItem(
-        `links_cache_${workspaceId}`,
-        JSON.stringify(updated)
-      );
+      await set(`links_cache_${workspaceId}`, updated);
 
       const action: PendingAction = {
         id: crypto.randomUUID(),
@@ -166,10 +163,10 @@ export function useOfflineSync(
           const res = await actions.onCreate(data);
           if (!res.success) throw new Error();
         } catch {
-          queueAction(action);
+          await queueAction(action);
         }
       } else {
-        queueAction(action);
+        await queueAction(action);
       }
     },
     [workspaceId, links, actions, queueAction]
@@ -196,10 +193,7 @@ export function useOfflineSync(
         return l;
       });
       setLinks(updated);
-      localStorage.setItem(
-        `links_cache_${workspaceId}`,
-        JSON.stringify(updated)
-      );
+      await set(`links_cache_${workspaceId}`, updated);
 
       const action: PendingAction = {
         id: crypto.randomUUID(),
@@ -211,10 +205,10 @@ export function useOfflineSync(
           const res = await actions.onUpdate(data);
           if (!res.success) throw new Error();
         } catch {
-          queueAction(action);
+          await queueAction(action);
         }
       } else {
-        queueAction(action);
+        await queueAction(action);
       }
     },
     [workspaceId, links, actions, queueAction]
@@ -226,10 +220,7 @@ export function useOfflineSync(
         l.id === linkId ? { ...l, isActive } : l
       );
       setLinks(updated);
-      localStorage.setItem(
-        `links_cache_${workspaceId}`,
-        JSON.stringify(updated)
-      );
+      await set(`links_cache_${workspaceId}`, updated);
 
       const action: PendingAction = {
         id: crypto.randomUUID(),
@@ -241,10 +232,10 @@ export function useOfflineSync(
           const res = await actions.onToggle(linkId, isActive);
           if (!res.success) throw new Error();
         } catch {
-          queueAction(action);
+          await queueAction(action);
         }
       } else {
-        queueAction(action);
+        await queueAction(action);
       }
     },
     [workspaceId, links, actions, queueAction]
@@ -254,10 +245,7 @@ export function useOfflineSync(
     async (linkId: string) => {
       const updated = links.filter((l) => l.id !== linkId);
       setLinks(updated);
-      localStorage.setItem(
-        `links_cache_${workspaceId}`,
-        JSON.stringify(updated)
-      );
+      await set(`links_cache_${workspaceId}`, updated);
 
       const action: PendingAction = {
         id: crypto.randomUUID(),
@@ -269,10 +257,10 @@ export function useOfflineSync(
           const res = await actions.onDelete(linkId);
           if (!res.success) throw new Error();
         } catch {
-          queueAction(action);
+          await queueAction(action);
         }
       } else {
-        queueAction(action);
+        await queueAction(action);
       }
     },
     [workspaceId, links, actions, queueAction]
