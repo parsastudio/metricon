@@ -4,7 +4,10 @@ import { getWorkspaces } from "@/actions/workspace";
 import { db } from "@/lib/db";
 import { workspaces, workspaceMembers } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
-import { SettingsForm } from "./settings-form";
+import { getAppOrigin } from "@/lib/network";
+import { GeneralSettingsForm } from "./general-settings-form";
+import { ApiCredentialsCard } from "./api-credentials-card";
+import { DangerZoneCard } from "./danger-zone-card";
 
 export default async function SettingsPage({
   params,
@@ -41,6 +44,7 @@ export default async function SettingsPage({
   if (!workspaceData) redirect("/auth");
 
   const isOwner = memberRecord.role === "owner";
+  const origin = await getAppOrigin();
 
   return (
     <div className="space-y-6">
@@ -54,13 +58,27 @@ export default async function SettingsPage({
         </p>
       </div>
 
-      <SettingsForm
+      <GeneralSettingsForm
         workspace={{
           id: workspaceData.id,
           name: workspaceData.name,
           slug: workspaceData.slug,
           shortPrefix: workspaceData.shortPrefix,
           plan: workspaceData.plan,
+        }}
+        isOwner={isOwner}
+      />
+
+      <ApiCredentialsCard
+        workspaceId={workspaceData.id}
+        userId={user.id}
+        origin={origin}
+      />
+
+      <DangerZoneCard
+        workspace={{
+          id: workspaceData.id,
+          slug: workspaceData.slug,
         }}
         isOwner={isOwner}
       />
