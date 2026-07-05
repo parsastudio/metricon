@@ -5,7 +5,7 @@ import { links, workspaces, workspaceMembers } from "@/lib/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getSessionUser } from "./auth";
 import { cookies } from "next/headers";
-import { createLinkSchema } from "@/lib/validations";
+import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 
 export async function getLinks(workspaceId: string) {
   const user = await getSessionUser();
@@ -141,6 +141,116 @@ export async function createLink(data: {
       geoRouting: validated.geoRouting || null,
       clicksCount: 0,
     });
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "SERVER_ERROR" };
+  }
+}
+
+export async function updateLink(data: {
+  linkId: string;
+  workspaceId: string;
+  originalUrl: string;
+  title?: string;
+  password?: string;
+  expiresAt?: string;
+  maxClicks?: number;
+  iosUrl?: string;
+  androidUrl?: string;
+  desktopUrl?: string;
+  geoRouting?: Record<string, string>;
+}) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return { success: false, error: "UNAUTHORIZED" };
+    }
+
+    const validated = updateLinkSchema.parse(data);
+
+    const [member] = await db
+      .select()
+      .from(workspaceMembers)
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, validated.workspaceId),
+          eq(workspaceMembers.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    if (!member || member.role === "viewer") {
+      return { success: false, error: "FORBIDDEN" };
+    }
+
+    const [link] = await db
+      .select()
+      .from(links)
+      .where(
+        and(
+          eq(links.id, validated.linkId),
+          eq(links.workspaceId, validated.workspaceId)
+        )
+      )
+      .limit(1);
+
+    if (!link) {
+      return { success: false, error: "LINK_NOT_FOUND" };
+    }
+
+    await db
+      .update(links)
+      .set({
+        originalUrl: validated.originalUrl,
+        title: validated.title || validated.originalUrl,
+        password: validated.password || null,
+        expiresAt: validated.expiresAt ? new Date(validated.expiresAt) : null,
+        maxClicks: validated.maxClicks || null,
+        iosUrl: validated.iosUrl || null,
+        androidUrl: validated.androidUrl || null,
+        desktopUrl: validated.desktopUrl || null,
+        geoRouting: validated.geoRouting || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(links.id, validated.linkId));
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "SERVER_ERROR" };
+  }
+}
+
+export async function toggleLinkActiveStatus(
+  workspaceId: string,
+  linkId: string,
+  isActive: boolean
+) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return { success: false, error: "UNAUTHORIZED" };
+    }
+
+    const [member] = await db
+      .select()
+      .from(workspaceMembers)
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, workspaceId),
+          eq(workspaceMembers.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    if (!member || member.role === "viewer") {
+      return { success: false, error: "FORBIDDEN" };
+    }
+
+    await db
+      .update(links)
+      .set({ isActive, updatedAt: new Date() })
+      .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
 
     return { success: true };
   } catch {

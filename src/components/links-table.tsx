@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { deleteLink } from "@/actions/links";
+import { deleteLink, toggleLinkActiveStatus } from "@/actions/links";
 import {
   Calendar,
   Key,
@@ -11,11 +11,13 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOrigin } from "@/hooks/use-origin";
 import { motion, AnimatePresence } from "framer-motion";
+import { LinkEditor } from "./link-editor";
 
 interface LinkItem {
   id: string;
@@ -29,6 +31,7 @@ interface LinkItem {
   clicksCount: number;
   iosUrl?: string | null;
   androidUrl?: string | null;
+  desktopUrl?: string | null;
   geoRouting?: Record<string, string> | null;
 }
 
@@ -36,12 +39,14 @@ interface LinksTableProps {
   workspaceId: string;
   workspacePrefix: string;
   initialLinks: LinkItem[];
+  isPro: boolean;
 }
 
 export function LinksTable({
   workspaceId,
   workspacePrefix,
   initialLinks,
+  isPro,
 }: LinksTableProps) {
   const router = useRouter();
   const origin = useOrigin();
@@ -52,7 +57,12 @@ export function LinksTable({
   >("all");
   const [sortBy, setSortBy] = React.useState<"newest" | "clicks">("newest");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [editingLink, setEditingLink] = React.useState<LinkItem | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  React.useEffect(() => {
+    setLinksList(initialLinks);
+  }, [initialLinks]);
 
   const handleDelete = async (linkId: string) => {
     if (!confirm("Are you sure you want to delete this tracking link?")) return;
@@ -67,6 +77,36 @@ export function LinksTable({
       }
     } catch {
       toast.error("Failed to delete link");
+    }
+  };
+
+  const handleToggleActive = async (linkId: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus;
+    setLinksList((prev) =>
+      prev.map((l) => (l.id === linkId ? { ...l, isActive: nextStatus } : l))
+    );
+    try {
+      const res = await toggleLinkActiveStatus(workspaceId, linkId, nextStatus);
+      if (res.success) {
+        toast.success(
+          nextStatus ? "Tracking link activated" : "Tracking link deactivated"
+        );
+        router.refresh();
+      } else {
+        setLinksList((prev) =>
+          prev.map((l) =>
+            l.id === linkId ? { ...l, isActive: currentStatus } : l
+          )
+        );
+        toast.error("Failed to update link status");
+      }
+    } catch {
+      setLinksList((prev) =>
+        prev.map((l) =>
+          l.id === linkId ? { ...l, isActive: currentStatus } : l
+        )
+      );
+      toast.error("An unexpected error occurred");
     }
   };
 
@@ -181,10 +221,17 @@ export function LinksTable({
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="text-foreground truncate text-sm font-semibold">
+                    <h4
+                      className={`truncate text-sm font-semibold transition-opacity ${link.isActive ? "text-foreground" : "text-muted-foreground/60 line-through"}`}
+                    >
                       {link.title || "Untitled Link"}
                     </h4>
                     <div className="flex items-center gap-1">
+                      {!link.isActive && (
+                        <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[9px] font-bold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+                          INACTIVE
+                        </span>
+                      )}
                       {link.password && <Key className="text-primary size-3" />}
                       {link.expiresAt && (
                         <Calendar className="text-primary size-3" />
@@ -258,18 +305,53 @@ export function LinksTable({
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleDelete(link.id)}
-                    className="text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg p-1.5 transition-colors"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(link.id, link.isActive)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-hidden transition-colors duration-200 ease-in-out ${
+                        link.isActive
+                          ? "bg-primary"
+                          : "bg-neutral-300 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span
+                        className={`bg-background pointer-events-none inline-block size-4 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          link.isActive ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+
+                    <button
+                      onClick={() => setEditingLink(link)}
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg p-1.5 transition-colors"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(link.id)}
+                      className="text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg p-1.5 transition-colors"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ))
           )}
         </AnimatePresence>
       </div>
+
+      {editingLink && (
+        <LinkEditor
+          workspaceId={workspaceId}
+          isPro={isPro}
+          link={editingLink}
+          isOpen={!!editingLink}
+          onClose={() => setEditingLink(null)}
+        />
+      )}
     </div>
   );
 }

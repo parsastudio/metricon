@@ -60,6 +60,7 @@ export default async function LinksPage({
             workspaceId={currentWorkspace.id}
             workspacePrefix={currentWorkspace.shortPrefix}
             initialLinks={linksList}
+            isPro={currentWorkspace.plan === "pro"}
           />
         </ComponentErrorBoundary>
       )}

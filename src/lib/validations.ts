@@ -50,3 +50,17 @@ export const createLinkSchema = z.object({
   desktopUrl: z.string().url().optional().or(z.literal("")),
   geoRouting: z.record(z.string(), z.string().url()).optional(),
 });
+
+export const updateLinkSchema = z.object({
+  linkId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  originalUrl: z.string().url(),
+  title: z.string().optional(),
+  password: z.string().optional(),
+  expiresAt: z.string().optional(),
+  maxClicks: z.number().int().positive().optional(),
+  iosUrl: z.string().url().optional().or(z.literal("")),
+  androidUrl: z.string().url().optional().or(z.literal("")),
+  desktopUrl: z.string().url().optional().or(z.literal("")),
+  geoRouting: z.record(z.string(), z.string().url()).optional(),
+});
