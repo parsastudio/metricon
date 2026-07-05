@@ -1,6 +1,7 @@
 "use client";
 
 import { Globe, HardDrive, Compass } from "lucide-react";
+import { DeviceDonut } from "./device-donut";
 
 interface RecordRow {
   name: string;
@@ -11,6 +12,19 @@ interface BreakdownTablesProps {
   countries: RecordRow[];
   referrers: RecordRow[];
   devices: RecordRow[];
+}
+
+function getUnicodeFlag(countryCode: string): string {
+  if (!countryCode || countryCode === "Unknown") return "🌐";
+  const codePoints = countryCode
+    .toUpperCase()
+    .split("")
+    .map((char) => 127397 + char.charCodeAt(0));
+  try {
+    return String.fromCodePoint(...codePoints);
+  } catch {
+    return "🌐";
+  }
 }
 
 export function BreakdownTables({
@@ -36,7 +50,16 @@ export function BreakdownTables({
                 key={item.name}
                 className="flex items-center justify-between text-xs"
               >
-                <span className="font-medium">{item.name}</span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span
+                    className="text-sm select-none"
+                    role="img"
+                    aria-label={item.name}
+                  >
+                    {getUnicodeFlag(item.name)}
+                  </span>
+                  {item.name}
+                </span>
                 <span className="bg-muted rounded px-1.5 py-0.5 font-mono">
                   {item.value}
                 </span>
@@ -79,24 +102,23 @@ export function BreakdownTables({
           <HardDrive className="text-primary size-4" />
           <span>Devices Used</span>
         </div>
-        <div className="h-44 space-y-2 overflow-y-auto pr-1">
-          {devices.length === 0 ? (
-            <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
-              Empty
-            </div>
-          ) : (
-            devices.map((item) => (
+        <div className="space-y-3">
+          <DeviceDonut data={devices} />
+          <div className="border-border/50 h-16 space-y-1.5 overflow-y-auto border-t border-dashed pt-2.5 pr-1">
+            {devices.map((item) => (
               <div
                 key={item.name}
-                className="flex items-center justify-between text-xs"
+                className="flex items-center justify-between text-[10px]"
               >
-                <span className="font-medium">{item.name}</span>
-                <span className="bg-muted rounded px-1.5 py-0.5 font-mono">
+                <span className="text-muted-foreground font-medium">
+                  {item.name}
+                </span>
+                <span className="text-foreground font-mono font-bold">
                   {item.value}
                 </span>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
       </div>
     </div>
