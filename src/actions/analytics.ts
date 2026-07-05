@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { analytics, links } from "@/lib/schema";
-import { eq, gte, lte, and, sql, inArray } from "drizzle-orm";
+import { eq, gte, lte, and, inArray } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 
 export async function getWorkspaceAnalytics(
@@ -42,7 +42,6 @@ export async function getWorkspaceAnalytics(
       id: links.id,
       shortCode: links.shortCode,
       title: links.title,
-      clicksCount: links.clicksCount,
     })
     .from(links)
     .where(eq(links.workspaceId, workspaceId));
@@ -73,9 +72,18 @@ export async function getWorkspaceAnalytics(
   const totalClicks = clicks.length;
   const uniqueIps = new Set(clicks.map((c) => c.ipHash)).size;
 
-  const topLinkObj = [...workspaceLinks].sort(
-    (a, b) => b.clicksCount - a.clicksCount
-  )[0];
+  const linkClicksCountMap: Record<string, number> = {};
+  clicks.forEach((c) => {
+    linkClicksCountMap[c.linkId] = (linkClicksCountMap[c.linkId] || 0) + 1;
+  });
+
+  const sortedLinksByClicks = [...workspaceLinks].sort((a, b) => {
+    const countA = linkClicksCountMap[a.id] || 0;
+    const countB = linkClicksCountMap[b.id] || 0;
+    return countB - countA;
+  });
+
+  const topLinkObj = sortedLinksByClicks[0];
   const topLink = topLinkObj
     ? `${topLinkObj.title || topLinkObj.shortCode}`
     : "N/A";
@@ -143,11 +151,6 @@ export async function recordClick(
     ipHash: info.ipHash,
     timestamp: new Date(),
   });
-
-  await db
-    .update(links)
-    .set({ clicksCount: sql`clicks_count + 1` })
-    .where(eq(links.id, linkId));
 }
 
 export async function seedMockData(workspaceId: string) {

@@ -12,12 +12,14 @@ import {
   Check,
   ExternalLink,
   Pencil,
+  QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOrigin } from "@/hooks/use-origin";
 import { motion, AnimatePresence } from "framer-motion";
 import { LinkEditor } from "./link-editor";
+import { QrCodeDialog } from "./qr-code-dialog";
 
 interface LinkItem {
   id: string;
@@ -58,6 +60,10 @@ export function LinksTable({
   const [sortBy, setSortBy] = React.useState<"newest" | "clicks">("newest");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [editingLink, setEditingLink] = React.useState<LinkItem | null>(null);
+  const [qrLink, setQrLink] = React.useState<{
+    url: string;
+    title: string;
+  } | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   React.useEffect(() => {
@@ -323,6 +329,18 @@ export function LinksTable({
                     </button>
 
                     <button
+                      onClick={() =>
+                        setQrLink({
+                          url: `${origin}/r/${workspacePrefix}/${link.shortCode}`,
+                          title: link.title || "Campaign Link",
+                        })
+                      }
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg p-1.5 transition-colors"
+                    >
+                      <QrCode className="size-4" />
+                    </button>
+
+                    <button
                       onClick={() => setEditingLink(link)}
                       className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg p-1.5 transition-colors"
                     >
@@ -350,6 +368,15 @@ export function LinksTable({
           link={editingLink}
           isOpen={!!editingLink}
           onClose={() => setEditingLink(null)}
+        />
+      )}
+
+      {qrLink && (
+        <QrCodeDialog
+          url={qrLink.url}
+          title={qrLink.title}
+          isOpen={!!qrLink}
+          onClose={() => setQrLink(null)}
         />
       )}
     </div>

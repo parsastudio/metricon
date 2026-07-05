@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { links, workspaces } from "@/lib/schema";
-import { eq, and } from "drizzle-orm";
+import { links, workspaces, analytics } from "@/lib/schema";
+import { eq, and, count } from "drizzle-orm";
 import { recordClick } from "@/actions/analytics";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
@@ -47,7 +47,13 @@ export default async function RedirectPage({
     redirect("/expired");
   }
 
-  if (link.maxClicks && link.clicksCount >= link.maxClicks) {
+  const [clicksCountResult] = await db
+    .select({ value: count() })
+    .from(analytics)
+    .where(eq(analytics.linkId, link.id));
+  const currentClicksCount = clicksCountResult?.value || 0;
+
+  if (link.maxClicks && currentClicksCount >= link.maxClicks) {
     redirect("/expired");
   }
 
@@ -87,6 +93,21 @@ export default async function RedirectPage({
     country = __country;
   } else if (geoCountry) {
     country = geoCountry;
+  } else if (rawIp && rawIp !== "127.0.0.1" && rawIp !== "::1") {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 400);
+      const res = await fetch(`https://ipapi.co/${rawIp}/country/`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.trim().length === 2) {
+          country = text.trim().toUpperCase();
+        }
+      }
+    } catch {}
   }
 
   let targetUrl = link.originalUrl;

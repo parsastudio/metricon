@@ -1,20 +1,40 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { links, workspaces } from "@/lib/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { links, workspaces, analytics } from "@/lib/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
-import { cookies } from "next/headers";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 
 export async function getLinks(workspaceId: string) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
-  return await db
-    .select()
+  const results = await db
+    .select({
+      id: links.id,
+      workspaceId: links.workspaceId,
+      shortCode: links.shortCode,
+      originalUrl: links.originalUrl,
+      title: links.title,
+      isActive: links.isActive,
+      password: links.password,
+      expiresAt: links.expiresAt,
+      maxClicks: links.maxClicks,
+      iosUrl: links.iosUrl,
+      androidUrl: links.androidUrl,
+      desktopUrl: links.desktopUrl,
+      geoRouting: links.geoRouting,
+      createdAt: links.createdAt,
+      updatedAt: links.updatedAt,
+      clicksCount: sql<number>`cast(count(${analytics.id}) as integer)`,
+    })
     .from(links)
+    .leftJoin(analytics, eq(links.id, analytics.linkId))
     .where(eq(links.workspaceId, workspaceId))
+    .groupBy(links.id)
     .orderBy(desc(links.createdAt));
+
+  return results;
 }
 
 export async function createLink(data: {
