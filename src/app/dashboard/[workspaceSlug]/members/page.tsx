@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces, getWorkspaceMembers } from "@/actions/workspace";
+import { getWorkspaces } from "@/actions/workspace-crud";
+import { getWorkspaceMembers } from "@/actions/workspace-members";
 import { TeamMembers } from "@/components/team-members";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -42,7 +43,6 @@ export default async function MembersPage({
     .limit(1);
 
   if (!userMemberRecord) redirect("/auth");
-
   const members = await getWorkspaceMembers(currentWorkspace.id);
 
   const formattedMembers: FormattedMember[] = members.map((m) => ({

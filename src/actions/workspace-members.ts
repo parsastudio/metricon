@@ -7,90 +7,15 @@ import {
   workspaceInvitations,
   users,
 } from "@/lib/schema";
-import { eq, and, ne, gte } from "drizzle-orm";
-import { getSessionUser } from "./auth";
+import { eq, and, gte } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
-import {
-  createWorkspaceSchema,
-  updateWorkspaceSchema,
-  inviteMemberSchema,
-} from "@/lib/validations";
+import { inviteMemberSchema } from "@/lib/validations";
 import { IS_DEMO_MODE } from "@/core/config";
 import { sendEmail } from "@/lib/resend";
 import { getAppOrigin } from "@/lib/network";
 
-async function generateUniquePrefix(): Promise<string> {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let attempts = 0;
-  while (attempts < 50) {
-    let prefix = "";
-    for (let i = 0; i < 4; i++) {
-      prefix += chars[Math.floor(Math.random() * chars.length)];
-    }
-    const [existing] = await db
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.shortPrefix, prefix))
-      .limit(1);
-    if (!existing) {
-      return prefix;
-    }
-    attempts++;
-  }
-  return crypto.randomUUID().substring(0, 5);
-}
-
-export async function getWorkspaces() {
-  const user = await getSessionUser();
-  if (!user) return [];
-
-  const memberships = await db
-    .select({
-      id: workspaces.id,
-      name: workspaces.name,
-      slug: workspaces.slug,
-      plan: workspaces.plan,
-      linkLimit: workspaces.linkLimit,
-      shortPrefix: workspaces.shortPrefix,
-    })
-    .from(workspaceMembers)
-    .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
-    .where(eq(workspaceMembers.userId, user.id));
-
-  return memberships;
-}
-
-export async function createWorkspace(name: string, slug: string) {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const validated = createWorkspaceSchema.parse({ name, slug });
-  const cleanSlug = validated.slug.toLowerCase().replace(/[^a-zA-Z0-9-]/g, "");
-  const workspaceId = crypto.randomUUID();
-  const shortPrefix = await generateUniquePrefix();
-
-  await db.insert(workspaces).values({
-    id: workspaceId,
-    name: validated.name,
-    slug: cleanSlug,
-    shortPrefix,
-    plan: "free",
-    linkLimit: 10,
-  });
-
-  await db.insert(workspaceMembers).values({
-    id: crypto.randomUUID(),
-    workspaceId: workspaceId,
-    userId: user.id,
-    role: "owner",
-  });
-
-  return { id: workspaceId, slug: cleanSlug };
-}
-
 export async function getWorkspaceMembers(workspaceId: string) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
-
   return await db
     .select({
       id: workspaceMembers.id,
@@ -295,7 +220,6 @@ export async function acceptWorkspaceInvitation(token: string) {
   await db
     .delete(workspaceInvitations)
     .where(eq(workspaceInvitations.id, invitation.id));
-
   const [workspace] = await db
     .select({ slug: workspaces.slug })
     .from(workspaces)
@@ -311,7 +235,6 @@ export async function revokeWorkspaceInvitation(
 ) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
-
     await db
       .delete(workspaceInvitations)
       .where(eq(workspaceInvitations.id, invitationId));
@@ -330,104 +253,7 @@ export async function revokeWorkspaceInvitation(
 export async function removeMember(workspaceId: string, memberId: string) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner"]);
-
     await db.delete(workspaceMembers).where(eq(workspaceMembers.id, memberId));
-    return { success: true };
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
-    ) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: "SERVER_ERROR" };
-  }
-}
-
-export async function updateWorkspace(
-  workspaceId: string,
-  name: string,
-  slug: string,
-  shortPrefix: string
-) {
-  try {
-    await verifyWorkspaceAccess(workspaceId, ["owner"]);
-    const validated = updateWorkspaceSchema.parse({ name, slug, shortPrefix });
-    const cleanSlug = validated.slug
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9-]/g, "");
-
-    const [existingSlug] = await db
-      .select()
-      .from(workspaces)
-      .where(
-        and(eq(workspaces.slug, cleanSlug), ne(workspaces.id, workspaceId))
-      )
-      .limit(1);
-
-    if (existingSlug) {
-      return { success: false, error: "SLUG_EXISTS" };
-    }
-
-    const [workspace] = await db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.id, workspaceId))
-      .limit(1);
-
-    if (!workspace) {
-      return { success: false, error: "WORKSPACE_NOT_FOUND" };
-    }
-
-    const cleanPrefix =
-      workspace.plan === "pro"
-        ? validated.shortPrefix.toLowerCase().replace(/[^a-zA-Z0-9-]/g, "")
-        : workspace.shortPrefix;
-
-    if (workspace.plan === "pro") {
-      const [existingPrefix] = await db
-        .select()
-        .from(workspaces)
-        .where(
-          and(
-            eq(workspaces.shortPrefix, cleanPrefix),
-            ne(workspaces.id, workspaceId)
-          )
-        )
-        .limit(1);
-
-      if (existingPrefix) {
-        return { success: false, error: "PREFIX_EXISTS" };
-      }
-    }
-
-    await db
-      .update(workspaces)
-      .set({
-        name: validated.name,
-        slug: cleanSlug,
-        shortPrefix: cleanPrefix,
-        updatedAt: new Date(),
-      })
-      .where(eq(workspaces.id, workspaceId));
-
-    return { success: true, slug: cleanSlug };
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
-    ) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: "SERVER_ERROR" };
-  }
-}
-
-export async function deleteWorkspace(workspaceId: string) {
-  try {
-    await verifyWorkspaceAccess(workspaceId, ["owner"]);
-
-    await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
     return { success: true };
   } catch (error) {
     if (
@@ -447,7 +273,6 @@ export async function updateMemberRole(
 ) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner"]);
-
     await db
       .update(workspaceMembers)
       .set({ role: newRole })
@@ -457,7 +282,6 @@ export async function updateMemberRole(
           eq(workspaceMembers.workspaceId, workspaceId)
         )
       );
-
     return { success: true };
   } catch (error) {
     if (

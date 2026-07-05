@@ -4,13 +4,12 @@ import { db } from "@/lib/db";
 import { links, workspaces, analytics } from "@/lib/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
-import { cookies, revalidateTag } from "next/headers";
+import { revalidateTag } from "next/headers";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 
 export async function getLinks(workspaceId: string) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
-
-  const results = await db
+  return await db
     .select({
       id: links.id,
       workspaceId: links.workspaceId,
@@ -34,8 +33,6 @@ export async function getLinks(workspaceId: string) {
     .where(eq(links.workspaceId, workspaceId))
     .groupBy(links.id)
     .orderBy(desc(links.createdAt));
-
-  return results;
 }
 
 export async function createLink(data: {
@@ -54,7 +51,6 @@ export async function createLink(data: {
   try {
     const validated = createLinkSchema.parse(data);
     await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);
-
     const [workspace] = await db
       .select()
       .from(workspaces)
@@ -70,8 +66,10 @@ export async function createLink(data: {
       .from(links)
       .where(eq(links.workspaceId, validated.workspaceId));
 
-    const linkCount = existingLinks.length;
-    if (workspace.plan === "free" && linkCount >= workspace.linkLimit) {
+    if (
+      workspace.plan === "free" &&
+      existingLinks.length >= workspace.linkLimit
+    ) {
       return { success: false, error: "LIMIT_REACHED" };
     }
 
@@ -113,7 +111,6 @@ export async function createLink(data: {
     }
 
     const linkId = crypto.randomUUID();
-
     await db.insert(links).values({
       id: linkId,
       workspaceId: validated.workspaceId,
@@ -131,7 +128,6 @@ export async function createLink(data: {
     });
 
     revalidateTag(`link-${validated.workspaceId}-${cleanShortCode}`);
-
     return { success: true };
   } catch (error) {
     if (
@@ -160,7 +156,6 @@ export async function updateLink(data: {
   try {
     const validated = updateLinkSchema.parse(data);
     await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);
-
     const [link] = await db
       .select()
       .from(links)
@@ -193,7 +188,6 @@ export async function updateLink(data: {
       .where(eq(links.id, validated.linkId));
 
     revalidateTag(`link-${validated.workspaceId}-${link.shortCode}`);
-
     return { success: true };
   } catch (error) {
     if (
@@ -213,7 +207,6 @@ export async function toggleLinkActiveStatus(
 ) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
-
     const [link] = await db
       .select({ shortCode: links.shortCode })
       .from(links)
@@ -228,7 +221,6 @@ export async function toggleLinkActiveStatus(
 
       revalidateTag(`link-${workspaceId}-${link.shortCode}`);
     }
-
     return { success: true };
   } catch (error) {
     if (
@@ -244,7 +236,6 @@ export async function toggleLinkActiveStatus(
 export async function deleteLink(workspaceId: string, linkId: string) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
-
     const [link] = await db
       .select({ shortCode: links.shortCode })
       .from(links)
@@ -258,7 +249,6 @@ export async function deleteLink(workspaceId: string, linkId: string) {
 
       revalidateTag(`link-${workspaceId}-${link.shortCode}`);
     }
-
     return { success: true };
   } catch (error) {
     if (
@@ -267,85 +257,6 @@ export async function deleteLink(workspaceId: string, linkId: string) {
     ) {
       return { success: false, error: error.message };
     }
-    return { success: false, error: "SERVER_ERROR" };
-  }
-}
-
-export async function verifyLinkPassword(
-  workspacePrefix: string,
-  code: string,
-  passwordEntered: string
-) {
-  try {
-    const cookieStore = await cookies();
-    const lockoutCookieName = `lockout_${workspacePrefix}_${code}`;
-    const attemptsCookieName = `attempts_${workspacePrefix}_${code}`;
-
-    const isLockedOut = cookieStore.get(lockoutCookieName)?.value === "true";
-    if (isLockedOut) {
-      return { success: false, error: "LOCKED_OUT" };
-    }
-
-    const [workspace] = await db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.shortPrefix, workspacePrefix))
-      .limit(1);
-
-    if (!workspace) {
-      return { success: false, error: "WORKSPACE_NOT_FOUND" };
-    }
-
-    const [link] = await db
-      .select()
-      .from(links)
-      .where(
-        and(eq(links.workspaceId, workspace.id), eq(links.shortCode, code))
-      )
-      .limit(1);
-
-    if (!link) {
-      return { success: false, error: "LINK_NOT_FOUND" };
-    }
-
-    if (link.password !== passwordEntered) {
-      const currentAttemptsVal = cookieStore.get(attemptsCookieName)?.value;
-      const attempts = currentAttemptsVal
-        ? parseInt(currentAttemptsVal, 10) + 1
-        : 1;
-
-      if (attempts >= 5) {
-        cookieStore.set(lockoutCookieName, "true", {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 900,
-        });
-        cookieStore.delete(attemptsCookieName);
-        return { success: false, error: "INCORRECT_PASSWORD_LOCKED" };
-      } else {
-        cookieStore.set(attemptsCookieName, String(attempts), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 900,
-        });
-        return { success: false, error: "INCORRECT_PASSWORD" };
-      }
-    }
-
-    cookieStore.delete(attemptsCookieName);
-    cookieStore.delete(lockoutCookieName);
-
-    cookieStore.set(`link_unlocked_${workspacePrefix}_${code}`, "true", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 300,
-    });
-
-    return { success: true };
-  } catch {
     return { success: false, error: "SERVER_ERROR" };
   }
 }

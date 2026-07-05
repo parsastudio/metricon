@@ -152,6 +152,24 @@ export const analytics = pgTable(
   })
 );
 
+export const failedAttempts = pgTable(
+  "failed_attempts",
+  {
+    id: text("id").primaryKey(),
+    ipHash: text("ip_hash").notNull(),
+    linkId: text("link_id")
+      .notNull()
+      .references(() => links.id, { onDelete: "cascade" }),
+    attempts: integer("attempts").default(0).notNull(),
+    lockedUntil: timestamp("locked_until"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    ipLinkIdx: uniqueIndex("ip_link_idx").on(table.ipHash, table.linkId),
+  })
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(workspaceMembers),
 }));
@@ -192,11 +210,19 @@ export const linksRelations = relations(links, ({ one, many }) => ({
     references: [workspaces.id],
   }),
   clicks: many(analytics),
+  failedAttempts: many(failedAttempts),
 }));
 
 export const analyticsRelations = relations(analytics, ({ one }) => ({
   link: one(links, {
     fields: [analytics.linkId],
+    references: [links.id],
+  }),
+}));
+
+export const failedAttemptsRelations = relations(failedAttempts, ({ one }) => ({
+  link: one(links, {
+    fields: [failedAttempts.linkId],
     references: [links.id],
   }),
 }));

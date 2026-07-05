@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { updateLink } from "@/actions/links";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { QuotaGatekeeper } from "@/components/quota-gatekeeper";
@@ -31,6 +29,7 @@ interface LinkEditorProps {
   link: LinkItem;
   isOpen: boolean;
   onClose: () => void;
+  onUpdate: (data: Record<string, any>) => Promise<void>;
 }
 
 export function LinkEditor({
@@ -39,8 +38,8 @@ export function LinkEditor({
   link,
   isOpen,
   onClose,
+  onUpdate,
 }: LinkEditorProps) {
-  const router = useRouter();
   const [showUpgradeModal, setShowUpgradeModal] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
@@ -87,7 +86,7 @@ export function LinkEditor({
 
     setLoading(true);
     try {
-      const res = await updateLink({
+      await onUpdate({
         linkId: link.id,
         workspaceId,
         originalUrl,
@@ -99,14 +98,8 @@ export function LinkEditor({
         geoRouting: Object.keys(geoRouting).length > 0 ? geoRouting : undefined,
       });
 
-      if (!res.success) {
-        toast.error("Failed to update link configurations");
-        return;
-      }
-
       toast.success("Link configurations updated successfully");
       onClose();
-      router.refresh();
     } catch {
       toast.error("An unexpected error occurred");
     } finally {
@@ -266,7 +259,7 @@ export function LinkEditor({
                           delete next[country];
                           setGeoRouting(next);
                         }}
-                        className="text-destructive hover:underline"
+                        className="text-destructive font-bold hover:underline"
                       >
                         Remove
                       </button>

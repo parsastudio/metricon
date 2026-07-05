@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces } from "@/actions/workspace";
+import { getWorkspaces } from "@/actions/workspace-crud";
 import { db } from "@/lib/db";
 import { workspaces, workspaceMembers } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
@@ -8,6 +8,7 @@ import { getAppOrigin } from "@/lib/network";
 import { GeneralSettingsForm } from "./general-settings-form";
 import { ApiCredentialsCard } from "./api-credentials-card";
 import { DangerZoneCard } from "./danger-zone-card";
+import { WeeklyReportTrigger } from "./weekly-report-card";
 
 export default async function SettingsPage({
   params,
@@ -68,6 +69,8 @@ export default async function SettingsPage({
         }}
         isOwner={isOwner}
       />
+
+      <WeeklyReportTrigger workspaceId={workspaceData.id} isOwner={isOwner} />
 
       <ApiCredentialsCard
         workspaceId={workspaceData.id}

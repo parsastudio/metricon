@@ -4,7 +4,7 @@ import * as React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
-import { acceptWorkspaceInvitation } from "@/actions/workspace";
+import { acceptWorkspaceInvitation } from "@/actions/workspace-members";
 import { toast } from "sonner";
 
 function AcceptInvitationContent() {

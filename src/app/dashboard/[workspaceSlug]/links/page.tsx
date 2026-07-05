@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces } from "@/actions/workspace";
-import { getLinks, createLink } from "@/actions/links";
+import { getWorkspaces } from "@/actions/workspace-crud";
+import { getLinks, createLink } from "@/actions/links-crud";
 import { LinksManager } from "@/components/links-manager";
 import { SeedButton } from "@/components/analytics/seed-button";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";

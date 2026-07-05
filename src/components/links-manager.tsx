@@ -5,6 +5,12 @@ import { LinkCreator } from "./link-creator";
 import { LinksTable } from "./links-table";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Wifi, WifiOff } from "lucide-react";
+import {
+  deleteLink,
+  toggleLinkActiveStatus,
+  updateLink,
+} from "@/actions/links-crud";
+import { useOrigin } from "@/hooks/use-origin";
 
 interface LinkItem {
   id: string;
@@ -49,11 +55,22 @@ export function LinksManager({
   isPro,
   onCreateLink,
 }: LinksManagerProps) {
-  const { links, isOnline, createLinkOffline } = useOfflineSync(
-    workspaceId,
-    initialLinks,
-    onCreateLink
-  );
+  const origin = useOrigin();
+
+  const {
+    links,
+    isOnline,
+    createLinkOffline,
+    updateLinkOffline,
+    toggleLinkOffline,
+    deleteLinkOffline,
+  } = useOfflineSync(workspaceId, initialLinks, {
+    onCreate: async (data) => onCreateLink(data as any),
+    onUpdate: async (data) => updateLink(data as any),
+    onDelete: async (linkId) => deleteLink(workspaceId, linkId),
+    onToggle: async (linkId, isActive) =>
+      toggleLinkActiveStatus(workspaceId, linkId, isActive),
+  });
 
   return (
     <div className="space-y-6">
@@ -94,6 +111,10 @@ export function LinksManager({
         workspacePrefix={workspacePrefix}
         initialLinks={links}
         isPro={isPro}
+        origin={origin}
+        onDelete={deleteLinkOffline}
+        onToggleActive={toggleLinkOffline}
+        onUpdateLink={updateLinkOffline}
       />
     </div>
   );

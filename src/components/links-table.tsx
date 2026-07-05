@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { deleteLink, toggleLinkActiveStatus } from "@/actions/links";
 import {
   Calendar,
   Key,
@@ -16,8 +15,6 @@ import {
   WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { useOrigin } from "@/hooks/use-origin";
 import { motion, AnimatePresence } from "framer-motion";
 import { LinkEditor } from "./link-editor";
 import { QrCodeDialog } from "./qr-code-dialog";
@@ -43,6 +40,10 @@ interface LinksTableProps {
   workspacePrefix: string;
   initialLinks: LinkItem[];
   isPro: boolean;
+  origin: string;
+  onDelete: (linkId: string) => Promise<void>;
+  onToggleActive: (linkId: string, isActive: boolean) => Promise<void>;
+  onUpdateLink: (data: Record<string, unknown>) => Promise<void>;
 }
 
 export function LinksTable({
@@ -50,9 +51,11 @@ export function LinksTable({
   workspacePrefix,
   initialLinks,
   isPro,
+  origin,
+  onDelete,
+  onToggleActive,
+  onUpdateLink,
 }: LinksTableProps) {
-  const router = useRouter();
-  const origin = useOrigin();
   const [linksList, setLinksList] = React.useState<LinkItem[]>(initialLinks);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [targetFilter, setTargetFilter] = React.useState<
@@ -79,14 +82,8 @@ export function LinksTable({
     }
     if (!confirm("Are you sure you want to delete this tracking link?")) return;
     try {
-      const res = await deleteLink(workspaceId, linkId);
-      if (res.success) {
-        setLinksList(linksList.filter((l) => l.id !== linkId));
-        toast.success("Link deleted successfully");
-        router.refresh();
-      } else {
-        toast.error("Failed to delete link: " + res.error);
-      }
+      await onDelete(linkId);
+      toast.success("Link deleted successfully");
     } catch {
       toast.error("Failed to delete link");
     }
@@ -104,27 +101,17 @@ export function LinksTable({
       prev.map((l) => (l.id === linkId ? { ...l, isActive: nextStatus } : l))
     );
     try {
-      const res = await toggleLinkActiveStatus(workspaceId, linkId, nextStatus);
-      if (res.success) {
-        toast.success(
-          nextStatus ? "Tracking link activated" : "Tracking link deactivated"
-        );
-        router.refresh();
-      } else {
-        setLinksList((prev) =>
-          prev.map((l) =>
-            l.id === linkId ? { ...l, isActive: currentStatus } : l
-          )
-        );
-        toast.error("Failed to update link status");
-      }
+      await onToggleActive(linkId, nextStatus);
+      toast.success(
+        nextStatus ? "Tracking link activated" : "Tracking link deactivated"
+      );
     } catch {
       setLinksList((prev) =>
         prev.map((l) =>
           l.id === linkId ? { ...l, isActive: currentStatus } : l
         )
       );
-      toast.error("An unexpected error occurred");
+      toast.error("Failed to update link status");
     }
   };
 
@@ -388,6 +375,7 @@ export function LinksTable({
           link={editingLink}
           isOpen={!!editingLink}
           onClose={() => setEditingLink(null)}
+          onUpdate={onUpdateLink}
         />
       )}
       {qrLink && (
