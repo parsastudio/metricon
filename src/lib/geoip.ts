@@ -49,3 +49,34 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   }
   return "Unknown";
 }
+
+export async function resolveCountryFromHeaders(
+  reqHeaders: Headers
+): Promise<string> {
+  const vercelCountry = reqHeaders.get("x-vercel-ip-country");
+  if (vercelCountry) {
+    return vercelCountry.toUpperCase();
+  }
+
+  const cfCountry = reqHeaders.get("cf-ipcountry");
+  if (cfCountry) {
+    return cfCountry.toUpperCase();
+  }
+
+  const rawIp = getClientIp(reqHeaders);
+  return resolveCountryFromIp(rawIp);
+}
+
+export function getClientIp(reqHeaders: Headers): string {
+  const cfIp = reqHeaders.get("cf-connecting-ip");
+  if (cfIp) {
+    return cfIp;
+  }
+
+  const forwardedFor = reqHeaders.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  return "127.0.0.1";
+}

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { analytics } from "@/lib/schema";
-import { eq, count } from "drizzle-orm";
+import { eq, count, sql } from "drizzle-orm";
 import { recordClick } from "@/actions/analytics";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
@@ -8,7 +8,7 @@ import { after } from "next/server";
 import { IS_DEMO_MODE } from "@/core/config";
 import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
-import { resolveCountryFromIp } from "@/lib/geoip";
+import { resolveCountryFromHeaders, getClientIp } from "@/lib/geoip";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -57,13 +57,7 @@ export default async function RedirectPage({
     redirect("/expired");
   }
 
-  const [clicksCountResult] = await db
-    .select({ value: count() })
-    .from(analytics)
-    .where(eq(analytics.linkId, link.id));
-  const currentClicksCount = clicksCountResult?.value || 0;
-
-  if (link.maxClicks && currentClicksCount >= link.maxClicks) {
+  if (link.maxClicks && link.clicksCount >= link.maxClicks) {
     redirect("/expired");
   }
 
@@ -85,7 +79,7 @@ export default async function RedirectPage({
   const reqHeaders = await headers();
   const userAgent = reqHeaders.get("user-agent") || "";
   const referrer = reqHeaders.get("referer") || "Direct";
-  const rawIp = reqHeaders.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  const rawIp = getClientIp(reqHeaders);
   const ipHash = await getSha256Hash(rawIp);
 
   let device = "Desktop";
@@ -107,13 +101,10 @@ export default async function RedirectPage({
   }
 
   let country = "Unknown";
-  const geoCountry = reqHeaders.get("x-vercel-ip-country");
   if (__country && (process.env.NODE_ENV === "development" || IS_DEMO_MODE)) {
     country = __country;
-  } else if (geoCountry) {
-    country = geoCountry;
   } else {
-    country = await resolveCountryFromIp(rawIp);
+    country = await resolveCountryFromHeaders(reqHeaders);
   }
 
   let targetUrl = link.originalUrl;
@@ -189,7 +180,15 @@ export default async function RedirectPage({
       device,
       browser,
       ipHash,
-    }).catch(() => {});
+    })
+      .then(() => {
+        return db.execute(sql`
+          UPDATE links
+          SET clicks_count = clicks_count + 1
+          WHERE id = ${link.id};
+        `);
+      })
+      .catch(() => {});
   });
 
   redirect(targetUrl);
