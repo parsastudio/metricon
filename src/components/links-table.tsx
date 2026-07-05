@@ -3,9 +3,10 @@
 import * as React from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { deleteLink } from "@/actions/links";
-import { Calendar, Key, Trash2, Search } from "lucide-react";
+import { Calendar, Key, Trash2, Search, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useOrigin } from "@/hooks/use-origin";
 
 interface LinkItem {
   id: string;
@@ -34,12 +35,14 @@ export function LinksTable({
   initialLinks,
 }: LinksTableProps) {
   const router = useRouter();
+  const origin = useOrigin();
   const [linksList, setLinksList] = React.useState<LinkItem[]>(initialLinks);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [targetFilter, setTargetFilter] = React.useState<
     "all" | "standard" | "targeted"
   >("all");
   const [sortBy, setSortBy] = React.useState<"newest" | "clicks">("newest");
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const handleDelete = async (linkId: string) => {
@@ -56,6 +59,14 @@ export function LinksTable({
     } catch {
       toast.error("Failed to delete link");
     }
+  };
+
+  const handleCopyLink = (shortCode: string, linkId: string) => {
+    const fullUrl = `${origin}/r/${workspacePrefix}/${shortCode}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedId(linkId);
+    toast.success("Short link copied to clipboard!");
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const filteredLinks = React.useMemo(() => {
@@ -170,8 +181,23 @@ export function LinksTable({
                       <div className="text-foreground font-semibold">
                         {link.title || "Untitled Link"}
                       </div>
-                      <div className="text-primary font-mono text-[10px]">
-                        /r/{workspacePrefix}/{link.shortCode}
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <span className="text-primary font-mono text-[10px]">
+                          /r/{workspacePrefix}/{link.shortCode}
+                        </span>
+                        <button
+                          onClick={() =>
+                            handleCopyLink(link.shortCode, link.id)
+                          }
+                          className="text-muted-foreground hover:text-foreground cursor-pointer rounded-sm p-0.5 transition-colors"
+                          title="Copy short link"
+                        >
+                          {copiedId === link.id ? (
+                            <Check className="size-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="size-3" />
+                          )}
+                        </button>
                       </div>
                     </td>
                     <td className="text-muted-foreground max-w-xs truncate p-4 font-mono">

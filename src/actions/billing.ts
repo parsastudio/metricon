@@ -5,8 +5,8 @@ import { workspaces, workspaceMembers } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { getSessionUser } from "./auth";
 import { stripe } from "@/lib/stripe";
-import { headers } from "next/headers";
 import { IS_DEMO_MODE } from "@/core/config";
+import { getAppOrigin } from "@/lib/network";
 
 export async function getBillingInfo(workspaceId: string) {
   const user = await getSessionUser();
@@ -85,10 +85,7 @@ export async function upgradeToPro(workspaceId: string) {
         url: `/dashboard/${workspace.slug}/billing?sandbox=success`,
       };
     } else {
-      const reqHeaders = await headers();
-      const host = reqHeaders.get("host") || "localhost:3000";
-      const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-      const origin = `${protocol}://${host}`;
+      const origin = await getAppOrigin();
 
       let customerId = workspace.stripeCustomerId;
       if (!customerId) {
@@ -165,10 +162,7 @@ export async function createPortalSession(workspaceId: string) {
         return { success: false, error: "NO_CUSTOMER_FOUND" };
       }
 
-      const reqHeaders = await headers();
-      const host = reqHeaders.get("host") || "localhost:3000";
-      const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-      const origin = `${protocol}://${host}`;
+      const origin = await getAppOrigin();
 
       const session = await stripe.billingPortal.sessions.create({
         customer: workspace.stripeCustomerId,

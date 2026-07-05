@@ -12,6 +12,7 @@ import { eq, and, gte } from "drizzle-orm";
 import { loginSchema } from "@/lib/validations";
 import { IS_DEMO_MODE } from "@/core/config";
 import { sendEmail } from "@/lib/resend";
+import { getAppOrigin } from "@/lib/network";
 
 async function generateUniquePrefix(): Promise<string> {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -134,7 +135,7 @@ export async function loginUser(email: string, name?: string) {
       expiresAt,
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = await getAppOrigin();
     const verificationUrl = `${appUrl}/auth/callback?token=${token}`;
 
     await sendEmail({

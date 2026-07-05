@@ -16,6 +16,7 @@ import {
 } from "@/lib/validations";
 import { IS_DEMO_MODE } from "@/core/config";
 import { sendEmail } from "@/lib/resend";
+import { getAppOrigin } from "@/lib/network";
 
 async function generateUniquePrefix(): Promise<string> {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -237,7 +238,7 @@ export async function inviteMember(
         expiresAt,
       });
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const appUrl = await getAppOrigin();
       const invitationUrl = `${appUrl}/invite/accept?token=${token}`;
 
       await sendEmail({

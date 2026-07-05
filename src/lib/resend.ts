@@ -10,8 +10,10 @@ interface SendEmailParams {
 
 export async function sendEmail({ to, subject, html }: SendEmailParams) {
   try {
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL || "Metricon <noreply@metricon.co>";
     const data = await resend.emails.send({
-      from: "Metricon <noreply@metricon.co>",
+      from: fromEmail,
       to,
       subject,
       html,
@@ -21,4 +23,3 @@ export async function sendEmail({ to, subject, html }: SendEmailParams) {
     return { success: false, error };
   }
 }
-    

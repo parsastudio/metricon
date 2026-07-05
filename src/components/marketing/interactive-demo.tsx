@@ -22,6 +22,17 @@ export function InteractiveDemo() {
   );
   const [simulatedClicks, setSimulatedClicks] = React.useState(142);
   const [loading, setLoading] = React.useState(false);
+  const [origin, setOrigin] = React.useState("");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const cleanOrigin = origin
+    ? origin.replace(/^https?:\/\//, "")
+    : "metricon.co";
 
   React.useEffect(() => {
     if (!isShortened) return;
@@ -42,7 +53,8 @@ export function InteractiveDemo() {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText("metricon.co/r/premium/promo");
+    const absoluteShortLink = `${origin || "https://metricon.co"}/r/premium/promo`;
+    navigator.clipboard.writeText(absoluteShortLink);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
@@ -129,7 +141,7 @@ export function InteractiveDemo() {
                   Generated Link
                 </span>
                 <div className="text-primary font-mono text-sm font-semibold">
-                  metricon.co/r/premium/promo
+                  {cleanOrigin}/r/premium/promo
                 </div>
               </div>
               <div className="flex gap-2">

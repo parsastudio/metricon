@@ -14,6 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useOrigin } from "@/hooks/use-origin";
 
 interface SettingsFormProps {
   workspace: {
@@ -28,6 +29,7 @@ interface SettingsFormProps {
 
 export function SettingsForm({ workspace, isOwner }: SettingsFormProps) {
   const router = useRouter();
+  const origin = useOrigin();
   const [name, setName] = React.useState(workspace.name);
   const [slug, setSlug] = React.useState(workspace.slug);
   const [shortPrefix, setShortPrefix] = React.useState(workspace.shortPrefix);
@@ -98,10 +100,10 @@ export function SettingsForm({ workspace, isOwner }: SettingsFormProps) {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const listUrl = `curl -X GET "https://metricon.co/api/v1/links?workspaceId=${workspace.id}" \\
+  const listUrl = `curl -X GET "${origin}/api/v1/links?workspaceId=${workspace.id}" \\
   -H "Authorization: Bearer <YOUR_USER_ID>"`;
 
-  const createUrl = `curl -X POST "https://metricon.co/api/v1/links" \\
+  const createUrl = `curl -X POST "${origin}/api/v1/links" \\
   -H "Authorization: Bearer <YOUR_USER_ID>" \\
   -H "Content-Type: application/json" \\
   -d '{
