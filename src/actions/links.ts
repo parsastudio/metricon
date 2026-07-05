@@ -1,28 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { links, workspaces, workspaceMembers } from "@/lib/schema";
+import { links, workspaces } from "@/lib/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { getSessionUser } from "./auth";
+import { verifyWorkspaceAccess } from "@/lib/rbac";
 import { cookies } from "next/headers";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 
 export async function getLinks(workspaceId: string) {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const [member] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(
-      and(
-        eq(workspaceMembers.workspaceId, workspaceId),
-        eq(workspaceMembers.userId, user.id)
-      )
-    )
-    .limit(1);
-
-  if (!member) throw new Error("Access denied");
+  await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
   return await db
     .select()
@@ -45,12 +31,8 @@ export async function createLink(data: {
   geoRouting?: Record<string, string>;
 }) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
     const validated = createLinkSchema.parse(data);
+    await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);
 
     const [workspace] = await db
       .select()
@@ -60,21 +42,6 @@ export async function createLink(data: {
 
     if (!workspace) {
       return { success: false, error: "WORKSPACE_NOT_FOUND" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, validated.workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role === "viewer") {
-      return { success: false, error: "FORBIDDEN" };
     }
 
     const existingLinks = await db
@@ -143,7 +110,13 @@ export async function createLink(data: {
     });
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
@@ -162,27 +135,8 @@ export async function updateLink(data: {
   geoRouting?: Record<string, string>;
 }) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
     const validated = updateLinkSchema.parse(data);
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, validated.workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role === "viewer") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);
 
     const [link] = await db
       .select()
@@ -216,7 +170,13 @@ export async function updateLink(data: {
       .where(eq(links.id, validated.linkId));
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
@@ -227,25 +187,7 @@ export async function toggleLinkActiveStatus(
   isActive: boolean
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role === "viewer") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
 
     await db
       .update(links)
@@ -253,39 +195,33 @@ export async function toggleLinkActiveStatus(
       .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
 
 export async function deleteLink(workspaceId: string, linkId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role === "viewer") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
 
     await db
       .delete(links)
       .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }

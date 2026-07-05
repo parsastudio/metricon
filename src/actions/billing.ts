@@ -1,29 +1,15 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { workspaces, workspaceMembers } from "@/lib/schema";
-import { eq, and } from "drizzle-orm";
-import { getSessionUser } from "./auth";
+import { workspaces } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
 import { IS_DEMO_MODE } from "@/core/config";
 import { getAppOrigin } from "@/lib/network";
+import { verifyWorkspaceAccess } from "@/lib/rbac";
 
 export async function getBillingInfo(workspaceId: string) {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const [member] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(
-      and(
-        eq(workspaceMembers.workspaceId, workspaceId),
-        eq(workspaceMembers.userId, user.id)
-      )
-    )
-    .limit(1);
-
-  if (!member) throw new Error("Unauthorized workspace access");
+  await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
   const [workspace] = await db
     .select()
@@ -41,25 +27,10 @@ export async function getBillingInfo(workspaceId: string) {
 
 export async function upgradeToPro(workspaceId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || (member.role !== "owner" && member.role !== "admin")) {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    const { user } = await verifyWorkspaceAccess(workspaceId, [
+      "owner",
+      "admin",
+    ]);
 
     const [workspace] = await db
       .select()
@@ -122,17 +93,20 @@ export async function upgradeToPro(workspaceId: string) {
 
       return { success: true, url: session.url };
     }
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
 
 export async function createPortalSession(workspaceId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
     const [workspace] = await db
       .select()
@@ -175,32 +149,20 @@ export async function createPortalSession(workspaceId: string) {
 
       return { success: true, url: session.url };
     }
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
 
 export async function downgradeToFree(workspaceId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role !== "owner") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
 
     await db
       .update(workspaces)
@@ -211,7 +173,13 @@ export async function downgradeToFree(workspaceId: string) {
       .where(eq(workspaces.id, workspaceId));
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }

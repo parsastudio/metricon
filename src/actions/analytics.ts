@@ -1,29 +1,15 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { analytics, links, workspaceMembers } from "@/lib/schema";
+import { analytics, links } from "@/lib/schema";
 import { eq, gte, and, sql, inArray } from "drizzle-orm";
-import { getSessionUser } from "./auth";
+import { verifyWorkspaceAccess } from "@/lib/rbac";
 
 export async function getWorkspaceAnalytics(
   workspaceId: string,
   timeframe: string
 ) {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const [member] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(
-      and(
-        eq(workspaceMembers.workspaceId, workspaceId),
-        eq(workspaceMembers.userId, user.id)
-      )
-    )
-    .limit(1);
-
-  if (!member) throw new Error("Access denied");
+  await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
   const now = new Date();
   let startDate = new Date();
@@ -152,23 +138,7 @@ export async function recordClick(
 
 export async function seedMockData(workspaceId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) return { success: false, error: "UNAUTHORIZED" };
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role !== "owner") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
 
     await db.delete(links).where(eq(links.workspaceId, workspaceId));
 
@@ -266,7 +236,13 @@ export async function seedMockData(workspaceId: string) {
     await db.insert(analytics).values(clicksToInsert);
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }

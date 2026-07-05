@@ -9,6 +9,7 @@ import {
 } from "@/lib/schema";
 import { eq, and, ne, gte } from "drizzle-orm";
 import { getSessionUser } from "./auth";
+import { verifyWorkspaceAccess } from "@/lib/rbac";
 import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
@@ -88,21 +89,7 @@ export async function createWorkspace(name: string, slug: string) {
 }
 
 export async function getWorkspaceMembers(workspaceId: string) {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const [member] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(
-      and(
-        eq(workspaceMembers.workspaceId, workspaceId),
-        eq(workspaceMembers.userId, user.id)
-      )
-    )
-    .limit(1);
-
-  if (!member) throw new Error("Access denied");
+  await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
   return await db
     .select({
@@ -138,28 +125,9 @@ export async function inviteMember(
   role: "owner" | "admin" | "viewer"
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
     const validated = inviteMemberSchema.parse({ workspaceId, email, role });
+    await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);
     const cleanEmail = validated.email.toLowerCase().trim();
-
-    const [currentUserMember] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, validated.workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!currentUserMember || currentUserMember.role === "viewer") {
-      return { success: false, error: "FORBIDDEN" };
-    }
 
     let [targetUser] = await db
       .select()
@@ -254,7 +222,13 @@ export async function inviteMember(
 
       return { success: true, isDemo: false };
     }
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
@@ -336,60 +310,36 @@ export async function revokeWorkspaceInvitation(
   invitationId: string
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role === "viewer") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
 
     await db
       .delete(workspaceInvitations)
       .where(eq(workspaceInvitations.id, invitationId));
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
 
 export async function removeMember(workspaceId: string, memberId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [currentUserMember] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!currentUserMember || currentUserMember.role !== "owner") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
 
     await db.delete(workspaceMembers).where(eq(workspaceMembers.id, memberId));
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
@@ -401,26 +351,7 @@ export async function updateWorkspace(
   shortPrefix: string
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role !== "owner") {
-      return { success: false, error: "FORBIDDEN" };
-    }
-
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
     const validated = updateWorkspaceSchema.parse({ name, slug, shortPrefix });
     const cleanSlug = validated.slug
       .toLowerCase()
@@ -481,36 +412,30 @@ export async function updateWorkspace(
       .where(eq(workspaces.id, workspaceId));
 
     return { success: true, slug: cleanSlug };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
 
 export async function deleteWorkspace(workspaceId: string) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [member] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!member || member.role !== "owner") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
 
     await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
@@ -521,25 +446,7 @@ export async function updateMemberRole(
   newRole: "owner" | "admin" | "viewer"
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return { success: false, error: "UNAUTHORIZED" };
-    }
-
-    const [currentUserMember] = await db
-      .select()
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!currentUserMember || currentUserMember.role !== "owner") {
-      return { success: false, error: "FORBIDDEN" };
-    }
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
 
     await db
       .update(workspaceMembers)
@@ -552,7 +459,13 @@ export async function updateMemberRole(
       );
 
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: "SERVER_ERROR" };
   }
 }
