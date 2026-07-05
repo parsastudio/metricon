@@ -3,6 +3,7 @@ import { getWorkspaces } from "@/actions/workspace";
 import { getLinks } from "@/actions/links";
 import { LinkCreator } from "@/components/link-creator";
 import { LinksTable } from "@/components/links-table";
+import { SeedButton } from "@/components/analytics/seed-button";
 import { Layers } from "lucide-react";
 import { redirect } from "next/navigation";
 
@@ -37,20 +38,25 @@ export default async function LinksPage({
       </div>
 
       {linksList.length === 0 ? (
-        <div className="bg-card border-border space-y-3 rounded-xl border p-12 text-center">
+        <div className="bg-card border-border space-y-4 rounded-xl border p-12 text-center">
           <div className="bg-muted text-muted-foreground mx-auto flex size-12 items-center justify-center rounded-full">
             <Layers className="size-5" />
           </div>
           <div className="space-y-1">
-            <h3 className="font-semibold">No links created</h3>
-            <p className="text-muted-foreground text-xs">
-              Create your first intelligent campaign tracking link today.
+            <h3 className="text-sm font-semibold">No links created</h3>
+            <p className="text-muted-foreground mx-auto mb-4 max-w-sm text-xs leading-relaxed">
+              Create your first campaign tracking link or instantly populate the
+              workspace with mock telemetry.
             </p>
+          </div>
+          <div className="flex justify-center">
+            <SeedButton workspaceId={currentWorkspace.id} />
           </div>
         </div>
       ) : (
         <LinksTable
           workspaceId={currentWorkspace.id}
+          workspacePrefix={currentWorkspace.shortPrefix}
           initialLinks={linksList}
         />
       )}

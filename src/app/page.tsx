@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { InteractiveDemo } from "@/components/marketing/interactive-demo";
 import {
   Sparkles,
   ArrowRight,
@@ -91,6 +92,8 @@ export default function Home() {
               </Button>
             </a>
           </div>
+
+          <InteractiveDemo />
         </div>
       </section>
 

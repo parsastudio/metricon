@@ -100,6 +100,7 @@ export async function createLink(data: {
       "auth",
       "static",
       "b",
+      "r",
       "links",
       "analytics",
       "members",
@@ -112,7 +113,12 @@ export async function createLink(data: {
     const [existingShortCode] = await db
       .select()
       .from(links)
-      .where(eq(links.shortCode, cleanShortCode))
+      .where(
+        and(
+          eq(links.workspaceId, validated.workspaceId),
+          eq(links.shortCode, cleanShortCode)
+        )
+      )
       .limit(1);
 
     if (existingShortCode) {
@@ -176,14 +182,27 @@ export async function deleteLink(workspaceId: string, linkId: string) {
 }
 
 export async function verifyLinkPassword(
+  workspacePrefix: string,
   code: string,
   passwordEntered: string
 ) {
   try {
+    const [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.shortPrefix, workspacePrefix))
+      .limit(1);
+
+    if (!workspace) {
+      return { success: false, error: "WORKSPACE_NOT_FOUND" };
+    }
+
     const [link] = await db
       .select()
       .from(links)
-      .where(eq(links.shortCode, code))
+      .where(
+        and(eq(links.workspaceId, workspace.id), eq(links.shortCode, code))
+      )
       .limit(1);
 
     if (!link) {
@@ -194,7 +213,7 @@ export async function verifyLinkPassword(
     }
 
     const cookieStore = await cookies();
-    cookieStore.set(`link_unlocked_${code}`, "true", {
+    cookieStore.set(`link_unlocked_${workspacePrefix}_${code}`, "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

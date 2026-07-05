@@ -4,11 +4,13 @@ import { getSessionUser } from "@/actions/auth";
 import { getWorkspaces } from "@/actions/workspace";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Link2,
   Users,
   BarChart3,
   CreditCard,
+  Settings,
   Sparkles,
   LogOut,
 } from "lucide-react";
@@ -59,6 +61,11 @@ export default async function DashboardLayout({
       href: `/dashboard/${workspaceSlug}/billing`,
       icon: CreditCard,
     },
+    {
+      name: "Settings",
+      href: `/dashboard/${workspaceSlug}/settings`,
+      icon: Settings,
+    },
   ];
 
   return (
@@ -87,12 +94,15 @@ export default async function DashboardLayout({
               {user.email}
             </div>
           </div>
-          <Link
-            href="/auth"
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <LogOut className="size-4" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href="/auth"
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="size-4" />
+            </Link>
+          </div>
         </div>
       </aside>
 

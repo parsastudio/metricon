@@ -7,6 +7,8 @@ export const SITE_CONFIG = {
   },
 };
 
+export const IS_DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export const SUBSCRIPTION_PLANS = {
   free: {
     id: "free",

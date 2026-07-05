@@ -38,6 +38,15 @@ export function LinkCreator({ workspaceId, isPro }: LinkCreatorProps) {
     {}
   );
 
+  const handleGenerateCode = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let randomCode = "";
+    for (let i = 0; i < 5; i++) {
+      randomCode += chars[Math.floor(Math.random() * chars.length)];
+    }
+    setShortCode(randomCode);
+  };
+
   const handleAddGeo = () => {
     if (!geoCountry || !geoUrl) return;
     setGeoRouting({ ...geoRouting, [geoCountry.toUpperCase()]: geoUrl });
@@ -82,7 +91,7 @@ export function LinkCreator({ workspaceId, isPro }: LinkCreatorProps) {
         if (res.error === "LIMIT_REACHED") {
           setShowUpgradeModal(true);
         } else if (res.error === "SHORT_CODE_EXISTS") {
-          toast.error("Short code is already taken");
+          toast.error("Short code is already taken in this workspace");
         } else if (res.error === "RESERVED_SHORT_CODE") {
           toast.error("This short code is reserved for system use");
         } else if (res.error === "FORBIDDEN") {
@@ -153,9 +162,19 @@ export function LinkCreator({ workspaceId, isPro }: LinkCreatorProps) {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase">
-                  Short Code
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase">
+                    Short Code
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateCode}
+                    className="text-primary hover:text-primary/80 flex cursor-pointer items-center gap-1 text-[10px] font-bold transition-colors"
+                  >
+                    <Sparkles className="size-3" />
+                    Auto
+                  </button>
+                </div>
                 <input
                   type="text"
                   required

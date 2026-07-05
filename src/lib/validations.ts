@@ -13,6 +13,20 @@ export const createWorkspaceSchema = z.object({
     .regex(/^[a-zA-Z0-9-]+$/),
 });
 
+export const updateWorkspaceSchema = z.object({
+  name: z.string().min(1).max(50),
+  slug: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[a-zA-Z0-9-]+$/),
+  shortPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[a-zA-Z0-9-]+$/),
+});
+
 export const inviteMemberSchema = z.object({
   workspaceId: z.string().min(1),
   email: z.string().email(),

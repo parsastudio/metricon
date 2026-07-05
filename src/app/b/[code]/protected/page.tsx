@@ -1,70 +1,33 @@
-"use client";
+import { db } from "@/lib/db";
+import { links, workspaces } from "@/lib/schema";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
-import * as React from "react";
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
-import { toast } from "sonner";
-import { verifyLinkPassword } from "@/actions/links";
+export default async function LegacyProtectedPage({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
+  const { code } = await params;
+  const [link] = await db
+    .select()
+    .from(links)
+    .where(eq(links.shortCode, code))
+    .limit(1);
 
-export default function ProtectedLinkPage() {
-  const params = useParams();
-  const code = params?.code as string;
-  const [password, setPassword] = React.useState("");
-  const [pending, setPending] = React.useState(false);
+  if (!link) {
+    redirect("/b/expired");
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPending(true);
-    try {
-      const res = await verifyLinkPassword(code, password);
-      if (res.success) {
-        window.location.href = `/b/${code}`;
-      } else {
-        toast.error(
-          res.error === "INCORRECT_PASSWORD"
-            ? "Incorrect password"
-            : "Authentication failed"
-        );
-      }
-    } catch {
-      toast.error("Authentication failed");
-    } finally {
-      setPending(false);
-    }
-  };
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.id, link.workspaceId))
+    .limit(1);
 
-  return (
-    <div className="bg-background flex flex-1 items-center justify-center p-4">
-      <div className="border-border bg-card w-full max-w-sm space-y-6 rounded-2xl border p-6 text-center shadow-xl">
-        <div className="bg-primary/10 text-primary mx-auto flex size-11 items-center justify-center rounded-xl">
-          <Lock className="size-5" />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold">Encrypted Link</h2>
-          <p className="text-muted-foreground text-xs">
-            This target destination is protected by access codes.
-          </p>
-        </div>
+  if (!workspace) {
+    redirect("/b/expired");
+  }
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="password"
-            required
-            placeholder="Type password..."
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border-border focus:border-primary w-full rounded-md border bg-transparent px-3 py-1.5 text-center text-sm outline-hidden"
-          />
-          <Button
-            type="submit"
-            disabled={pending}
-            className="w-full cursor-pointer"
-          >
-            {pending ? "Unlocking..." : "Unlock Destination"}
-          </Button>
-        </form>
-      </div>
-    </div>
-  );
+  redirect(`/r/${workspace.shortPrefix}/${code}/protected`);
 }

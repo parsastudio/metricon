@@ -1,11 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { inviteMember, removeMember } from "@/actions/workspace";
+import {
+  inviteMember,
+  removeMember,
+  revokeWorkspaceInvitation,
+  getPendingWorkspaceInvitations,
+} from "@/actions/workspace";
 import { Button } from "@/components/ui/button";
-import { User, Trash2, MailPlus, Shield } from "lucide-react";
+import { User, Trash2, MailPlus, Shield, Hourglass, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { IS_DEMO_MODE } from "@/core/config";
 
 interface Member {
   id: string;
@@ -16,6 +22,13 @@ interface Member {
     email: string;
     image: string | null;
   };
+}
+
+interface PendingInvite {
+  id: string;
+  email: string;
+  role: "owner" | "admin" | "viewer";
+  expiresAt: Date;
 }
 
 interface TeamMembersProps {
@@ -35,6 +48,28 @@ export function TeamMembers({
     "viewer"
   );
   const [loading, setLoading] = React.useState(false);
+  const [pendingInvites, setPendingInvites] = React.useState<PendingInvite[]>(
+    []
+  );
+
+  React.useEffect(() => {
+    async function loadInvitations() {
+      try {
+        const invites = await getPendingWorkspaceInvitations(workspaceId);
+        setPendingInvites(
+          invites.map((i) => ({
+            id: i.id,
+            email: i.email,
+            role: i.role as "owner" | "admin" | "viewer",
+            expiresAt: new Date(i.expiresAt),
+          }))
+        );
+      } catch {
+        toast.error("Failed to fetch pending invitations.");
+      }
+    }
+    loadInvitations();
+  }, [workspaceId]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +79,23 @@ export function TeamMembers({
       const res = await inviteMember(workspaceId, email, role);
       if (res.success) {
         setEmail("");
-        toast.success("Member invited successfully");
+        if (res.isDemo) {
+          toast.success(
+            "Sandbox Instant Invite: User auto-provisioned to organization!"
+          );
+        } else {
+          toast.success("Security token invitation dispatched successfully.");
+        }
         router.refresh();
+        const invites = await getPendingWorkspaceInvitations(workspaceId);
+        setPendingInvites(
+          invites.map((i) => ({
+            id: i.id,
+            email: i.email,
+            role: i.role as "owner" | "admin" | "viewer",
+            expiresAt: new Date(i.expiresAt),
+          }))
+        );
       } else {
         toast.error(res.error || "An error occurred");
       }
@@ -65,6 +115,22 @@ export function TeamMembers({
         router.refresh();
       } else {
         toast.error("Failed to remove member: " + res.error);
+      }
+    } catch {
+      toast.error("An error occurred");
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    if (!confirm("Are you sure you want to revoke this invitation token?"))
+      return;
+    try {
+      const res = await revokeWorkspaceInvitation(workspaceId, inviteId);
+      if (res.success) {
+        setPendingInvites(pendingInvites.filter((p) => p.id !== inviteId));
+        toast.success("Invitation code revoked successfully");
+      } else {
+        toast.error("Failed to revoke invite.");
       }
     } catch {
       toast.error("An error occurred");
@@ -110,7 +176,58 @@ export function TeamMembers({
               {loading ? "Sending..." : "Send Invitation"}
             </Button>
           </div>
+          {IS_DEMO_MODE && (
+            <p className="text-primary text-[10px] leading-relaxed">
+              * DEMO MODE: Inviting immediately creates active user record in
+              database. Turn off NEXT_PUBLIC_DEMO_MODE to test Resend email
+              token flows.
+            </p>
+          )}
         </form>
+      )}
+
+      {pendingInvites.length > 0 && (
+        <div className="bg-card border-border overflow-hidden rounded-xl border">
+          <div className="border-border flex items-center justify-between border-b px-5 py-4">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-amber-500">
+              <Hourglass className="size-4" /> Pending Invitation Tokens
+            </h3>
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-500">
+              {pendingInvites.length} pending
+            </span>
+          </div>
+          <div className="divide-border divide-y">
+            {pendingInvites.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex items-center justify-between gap-4 p-5"
+              >
+                <div>
+                  <div className="text-foreground text-sm font-medium">
+                    {invite.email}
+                  </div>
+                  <div className="text-muted-foreground font-mono text-xs">
+                    Expires: {invite.expiresAt.toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="border-border bg-muted flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium capitalize">
+                    <Shield className="text-primary size-3" />
+                    {invite.role}
+                  </span>
+                  {currentUserRole !== "viewer" && (
+                    <button
+                      onClick={() => handleRevokeInvite(invite.id)}
+                      className="text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg p-1.5 transition-colors"
+                    >
+                      <Ban className="size-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="bg-card border-border overflow-hidden rounded-xl border">

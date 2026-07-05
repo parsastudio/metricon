@@ -24,10 +24,15 @@ interface LinkItem {
 
 interface LinksTableProps {
   workspaceId: string;
+  workspacePrefix: string;
   initialLinks: LinkItem[];
 }
 
-export function LinksTable({ workspaceId, initialLinks }: LinksTableProps) {
+export function LinksTable({
+  workspaceId,
+  workspacePrefix,
+  initialLinks,
+}: LinksTableProps) {
   const router = useRouter();
   const [linksList, setLinksList] = React.useState<LinkItem[]>(initialLinks);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -166,7 +171,7 @@ export function LinksTable({ workspaceId, initialLinks }: LinksTableProps) {
                         {link.title || "Untitled Link"}
                       </div>
                       <div className="text-primary font-mono text-[10px]">
-                        {link.shortCode}
+                        /r/{workspacePrefix}/{link.shortCode}
                       </div>
                     </td>
                     <td className="text-muted-foreground max-w-xs truncate p-4 font-mono">

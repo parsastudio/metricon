@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { getSessionUser } from "./auth";
 import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
+import { IS_DEMO_MODE } from "@/core/config";
 
 export async function getBillingInfo(workspaceId: string) {
   const user = await getSessionUser();
@@ -70,45 +71,60 @@ export async function upgradeToPro(workspaceId: string) {
       return { success: false, error: "WORKSPACE_NOT_FOUND" };
     }
 
-    const reqHeaders = await headers();
-    const host = reqHeaders.get("host") || "localhost:3000";
-    const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-    const origin = `${protocol}://${host}`;
-
-    let customerId = workspace.stripeCustomerId;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.name || undefined,
-        metadata: { workspaceId },
-      });
-      customerId = customer.id;
+    if (IS_DEMO_MODE) {
       await db
         .update(workspaces)
-        .set({ stripeCustomerId: customerId })
+        .set({
+          plan: "pro",
+          linkLimit: 1000000,
+        })
         .where(eq(workspaces.id, workspaceId));
+
+      return {
+        success: true,
+        url: `/dashboard/${workspace.slug}/billing?sandbox=success`,
+      };
+    } else {
+      const reqHeaders = await headers();
+      const host = reqHeaders.get("host") || "localhost:3000";
+      const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+      const origin = `${protocol}://${host}`;
+
+      let customerId = workspace.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name || undefined,
+          metadata: { workspaceId },
+        });
+        customerId = customer.id;
+        await db
+          .update(workspaces)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(workspaces.id, workspaceId));
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: process.env.STRIPE_PRO_PRICE_ID || "price_dummy_pro",
+            quantity: 1,
+          },
+        ],
+        success_url: `${origin}/dashboard/${workspace.slug}/billing?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/dashboard/${workspace.slug}/billing`,
+        metadata: { workspaceId },
+      });
+
+      if (!session.url) {
+        return { success: false, error: "STRIPE_SESSION_ERROR" };
+      }
+
+      return { success: true, url: session.url };
     }
-
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: process.env.STRIPE_PRO_PRICE_ID || "price_dummy_pro",
-          quantity: 1,
-        },
-      ],
-      success_url: `${origin}/dashboard/${workspace.slug}/billing?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/dashboard/${workspace.slug}/billing`,
-      metadata: { workspaceId },
-    });
-
-    if (!session.url) {
-      return { success: false, error: "STRIPE_SESSION_ERROR" };
-    }
-
-    return { success: true, url: session.url };
   } catch {
     return { success: false, error: "SERVER_ERROR" };
   }
@@ -127,25 +143,44 @@ export async function createPortalSession(workspaceId: string) {
       .where(eq(workspaces.id, workspaceId))
       .limit(1);
 
-    if (!workspace || !workspace.stripeCustomerId) {
-      return { success: false, error: "NO_CUSTOMER_FOUND" };
+    if (!workspace) {
+      return { success: false, error: "WORKSPACE_NOT_FOUND" };
     }
 
-    const reqHeaders = await headers();
-    const host = reqHeaders.get("host") || "localhost:3000";
-    const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-    const origin = `${protocol}://${host}`;
+    if (IS_DEMO_MODE) {
+      await db
+        .update(workspaces)
+        .set({
+          plan: "free",
+          linkLimit: 10,
+        })
+        .where(eq(workspaces.id, workspaceId));
 
-    const session = await stripe.billingPortal.sessions.create({
-      customer: workspace.stripeCustomerId,
-      return_url: `${origin}/dashboard/${workspace.slug}/billing`,
-    });
+      return {
+        success: true,
+        url: `/dashboard/${workspace.slug}/billing?sandbox=downgrade`,
+      };
+    } else {
+      if (!workspace.stripeCustomerId) {
+        return { success: false, error: "NO_CUSTOMER_FOUND" };
+      }
 
-    if (!session.url) {
-      return { success: false, error: "PORTAL_SESSION_ERROR" };
+      const reqHeaders = await headers();
+      const host = reqHeaders.get("host") || "localhost:3000";
+      const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+      const origin = `${protocol}://${host}`;
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: workspace.stripeCustomerId,
+        return_url: `${origin}/dashboard/${workspace.slug}/billing`,
+      });
+
+      if (!session.url) {
+        return { success: false, error: "PORTAL_SESSION_ERROR" };
+      }
+
+      return { success: true, url: session.url };
     }
-
-    return { success: true, url: session.url };
   } catch {
     return { success: false, error: "SERVER_ERROR" };
   }
