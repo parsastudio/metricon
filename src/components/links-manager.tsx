@@ -5,11 +5,6 @@ import { LinkCreator } from "./link-creator";
 import { LinksTable } from "./links-table";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Wifi, WifiOff } from "lucide-react";
-import {
-  deleteLink,
-  toggleLinkActiveStatus,
-  updateLink,
-} from "@/actions/links-crud";
 import { useOrigin } from "@/hooks/use-origin";
 
 interface LinkItem {
@@ -46,6 +41,16 @@ interface LinksManagerProps {
     desktopUrl?: string;
     geoRouting?: Record<string, string>;
   }) => Promise<{ success: boolean; error?: string }>;
+  onUpdateLink: (
+    data: Record<string, unknown>
+  ) => Promise<{ success: boolean; error?: string }>;
+  onDeleteLink: (
+    linkId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  onToggleActive: (
+    linkId: string,
+    isActive: boolean
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function LinksManager({
@@ -54,6 +59,9 @@ export function LinksManager({
   initialLinks,
   isPro,
   onCreateLink,
+  onUpdateLink,
+  onDeleteLink,
+  onToggleActive,
 }: LinksManagerProps) {
   const origin = useOrigin();
 
@@ -65,11 +73,25 @@ export function LinksManager({
     toggleLinkOffline,
     deleteLinkOffline,
   } = useOfflineSync(workspaceId, initialLinks, {
-    onCreate: async (data) => onCreateLink(data as any),
-    onUpdate: async (data) => updateLink(data as any),
-    onDelete: async (linkId) => deleteLink(workspaceId, linkId),
-    onToggle: async (linkId, isActive) =>
-      toggleLinkActiveStatus(workspaceId, linkId, isActive),
+    onCreate: async (data) =>
+      onCreateLink(
+        data as {
+          workspaceId: string;
+          originalUrl: string;
+          shortCode: string;
+          title?: string;
+          password?: string;
+          expiresAt?: string;
+          maxClicks?: number;
+          iosUrl?: string;
+          androidUrl?: string;
+          desktopUrl?: string;
+          geoRouting?: Record<string, string>;
+        }
+      ),
+    onUpdate: async (data) => onUpdateLink(data),
+    onDelete: async (linkId) => onDeleteLink(linkId),
+    onToggle: async (linkId, isActive) => onToggleActive(linkId, isActive),
   });
 
   return (

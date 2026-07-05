@@ -25,6 +25,15 @@ async function getSha256Hash(message: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function generateUnlockSignature(
+  workspacePrefix: string,
+  code: string
+): Promise<string> {
+  const secret =
+    process.env.STRIPE_SECRET_KEY || "fallback_encryption_token_2026";
+  return await getSha256Hash(`${workspacePrefix}:${code}:${secret}:unlocked`);
+}
+
 export default async function RedirectPage({
   params,
   searchParams,
@@ -60,9 +69,14 @@ export default async function RedirectPage({
 
   if (link.password) {
     const cookieStore = await cookies();
-    const isUnlocked =
-      cookieStore.get(`link_unlocked_${workspacePrefix}_${code}`)?.value ===
-      "true";
+    const unlockedCookie = cookieStore.get(
+      `link_unlocked_${workspacePrefix}_${code}`
+    )?.value;
+    const expectedSignature = await generateUnlockSignature(
+      workspacePrefix,
+      code
+    );
+    const isUnlocked = unlockedCookie === expectedSignature;
     if (!isUnlocked) {
       redirect(`/r/${workspacePrefix}/${code}/protected`);
     }

@@ -1,6 +1,12 @@
 import { getSessionUser } from "@/actions/auth";
 import { getWorkspaces } from "@/actions/workspace-crud";
-import { getLinks, createLink } from "@/actions/links-crud";
+import {
+  getLinks,
+  createLink,
+  updateLink,
+  deleteLink,
+  toggleLinkActiveStatus,
+} from "@/actions/links-crud";
 import { LinksManager } from "@/components/links-manager";
 import { SeedButton } from "@/components/analytics/seed-button";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
@@ -48,6 +54,19 @@ export default async function LinksPage({
             initialLinks={linksList}
             isPro={currentWorkspace.plan === "pro"}
             onCreateLink={createLink}
+            onUpdateLink={updateLink}
+            onDeleteLink={async (linkId) => {
+              "use server";
+              return deleteLink(currentWorkspace.id, linkId);
+            }}
+            onToggleActive={async (linkId, isActive) => {
+              "use server";
+              return toggleLinkActiveStatus(
+                currentWorkspace.id,
+                linkId,
+                isActive
+              );
+            }}
           />
         </ComponentErrorBoundary>
       )}

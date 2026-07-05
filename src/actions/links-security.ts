@@ -12,6 +12,15 @@ async function getSha256Hash(message: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+export async function generateUnlockSignature(
+  workspacePrefix: string,
+  code: string
+): Promise<string> {
+  const secret =
+    process.env.STRIPE_SECRET_KEY || "fallback_encryption_token_2026";
+  return await getSha256Hash(`${workspacePrefix}:${code}:${secret}:unlocked`);
+}
+
 export async function verifyLinkPassword(
   workspacePrefix: string,
   code: string,
@@ -109,7 +118,9 @@ export async function verifyLinkPassword(
     }
 
     const cookieStore = await cookies();
-    cookieStore.set(`link_unlocked_${workspacePrefix}_${code}`, "true", {
+    const signature = await generateUnlockSignature(workspacePrefix, code);
+
+    cookieStore.set(`link_unlocked_${workspacePrefix}_${code}`, signature, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

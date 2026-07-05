@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, ArrowRight } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function DateRangePicker() {
@@ -16,8 +21,13 @@ export function DateRangePicker() {
   const [start, setStart] = React.useState(initialStart);
   const [end, setEnd] = React.useState(initialEnd);
 
-  const handleApply = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [currentYear, setCurrentYear] = React.useState(
+    new Date().getFullYear()
+  );
+  const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
+
+  const handleApply = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!start || !end) return;
 
     const params = new URLSearchParams(searchParams?.toString() || "");
@@ -41,10 +51,69 @@ export function DateRangePicker() {
     setEnd(endStr);
   };
 
+  const daysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const firstDayIndex = (year: number, month: number) => {
+    return new Date(year, month, 1).getDay();
+  };
+
+  const handleDateClick = (day: number) => {
+    const dateObj = new Date(currentYear, currentMonth, day + 1);
+    const dateString = dateObj.toISOString().split("T")[0];
+
+    if (!start || (start && end)) {
+      setStart(dateString);
+      setEnd("");
+    } else if (start && !end) {
+      if (dateString < start) {
+        setStart(dateString);
+      } else {
+        setEnd(dateString);
+      }
+    }
+  };
+
+  const changeMonth = (direction: number) => {
+    let nextMonth = currentMonth + direction;
+    let nextYear = currentYear;
+
+    if (nextMonth < 0) {
+      nextMonth = 11;
+      nextYear -= 1;
+    } else if (nextMonth > 11) {
+      nextMonth = 0;
+      nextYear += 1;
+    }
+
+    setCurrentMonth(nextMonth);
+    setCurrentYear(nextYear);
+  };
+
   const activeRangeText =
     initialStart && initialEnd
       ? `${initialStart} to ${initialEnd}`
       : "Custom Range";
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const totalDays = daysInMonth(currentYear, currentMonth);
+  const offset = firstDayIndex(currentYear, currentMonth);
+  const calendarCells = Array.from({ length: offset + totalDays });
 
   return (
     <div className="relative">
@@ -54,59 +123,105 @@ export function DateRangePicker() {
         onClick={() => setIsOpen(!isOpen)}
         className="border-border/60 hover:bg-muted cursor-pointer gap-2 text-xs font-semibold"
       >
-        <Calendar className="size-3.5" />
+        <CalendarIcon className="size-3.5" />
         {activeRangeText}
       </Button>
 
       {isOpen && (
-        <div className="border-border bg-popover text-popover-foreground absolute right-0 z-50 mt-2 w-72 rounded-xl border p-4 shadow-xl">
-          <form onSubmit={handleApply} className="space-y-4">
-            <div className="grid grid-cols-2 gap-1.5 pb-2">
+        <div className="border-border bg-popover text-popover-foreground absolute right-0 z-50 mt-2 w-[340px] rounded-xl border p-4 shadow-xl">
+          <div className="grid grid-cols-2 gap-1.5 pb-3">
+            <button
+              type="button"
+              onClick={() => handlePreset(7)}
+              className="border-border/60 hover:bg-muted text-foreground cursor-pointer rounded-md border py-1 text-[10px] font-bold"
+            >
+              Last 7 Days
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePreset(30)}
+              className="border-border/60 hover:bg-muted text-foreground cursor-pointer rounded-md border py-1 text-[10px] font-bold"
+            >
+              Last 30 Days
+            </button>
+          </div>
+
+          <div className="border-border/40 border-t pt-3">
+            <div className="flex items-center justify-between pb-3">
               <button
                 type="button"
-                onClick={() => handlePreset(7)}
-                className="border-border/60 hover:bg-muted rounded-md border py-1 text-[10px] font-bold"
+                onClick={() => changeMonth(-1)}
+                className="hover:bg-muted cursor-pointer rounded p-1"
               >
-                Last 7 Days
+                <ChevronLeft className="size-4" />
               </button>
+              <span className="text-foreground text-xs font-bold">
+                {monthNames[currentMonth]} {currentYear}
+              </span>
               <button
                 type="button"
-                onClick={() => handlePreset(30)}
-                className="border-border/60 hover:bg-muted rounded-md border py-1 text-[10px] font-bold"
+                onClick={() => changeMonth(1)}
+                className="hover:bg-muted cursor-pointer rounded p-1"
               >
-                Last 30 Days
+                <ChevronRight className="size-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                  className="border-border focus:border-primary mt-1 w-full rounded-md border bg-transparent px-3 py-1.5 text-xs outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                  className="border-border focus:border-primary mt-1 w-full rounded-md border bg-transparent px-3 py-1.5 text-xs outline-hidden"
-                />
-              </div>
+            <div className="text-muted-foreground grid grid-cols-7 gap-1 pb-1 text-center text-[10px] font-semibold">
+              <span>Su</span>
+              <span>Mo</span>
+              <span>Tu</span>
+              <span>We</span>
+              <span>Th</span>
+              <span>Fr</span>
+              <span>Sa</span>
             </div>
 
-            <div className="flex justify-end gap-1.5 pt-2">
+            <div className="grid grid-cols-7 gap-1 text-center text-xs">
+              {calendarCells.map((_, index) => {
+                if (index < offset) {
+                  return <div key={`empty-${index}`} />;
+                }
+
+                const day = index - offset + 1;
+                const cellDateObj = new Date(
+                  currentYear,
+                  currentMonth,
+                  day + 1
+                );
+                const cellDateStr = cellDateObj.toISOString().split("T")[0];
+
+                const isSelectedStart = start === cellDateStr;
+                const isSelectedEnd = end === cellDateStr;
+                const isInRange =
+                  start && end && cellDateStr > start && cellDateStr < end;
+
+                return (
+                  <button
+                    key={`day-${day}`}
+                    type="button"
+                    onClick={() => handleDateClick(day)}
+                    className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-[11px] font-medium transition-all ${
+                      isSelectedStart || isSelectedEnd
+                        ? "bg-primary text-primary-foreground font-bold"
+                        : isInRange
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="border-border/40 mt-4 flex items-center justify-between border-t pt-3">
+            <div className="text-muted-foreground flex flex-col gap-0.5 text-[10px]">
+              <span>Start: {start || "—"}</span>
+              <span>End: {end || "—"}</span>
+            </div>
+            <div className="flex gap-1">
               <Button
                 type="button"
                 variant="ghost"
@@ -115,11 +230,17 @@ export function DateRangePicker() {
               >
                 Cancel
               </Button>
-              <Button type="submit" size="xs" className="gap-1">
+              <Button
+                type="button"
+                onClick={() => handleApply()}
+                disabled={!start || !end}
+                size="xs"
+                className="gap-1"
+              >
                 Apply <ArrowRight className="size-3" />
               </Button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </div>
