@@ -4,17 +4,24 @@ import { eq, count } from "drizzle-orm";
 import { recordClick } from "@/actions/analytics";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
-import { createHash } from "crypto";
 import { after } from "next/server";
 import { IS_DEMO_MODE } from "@/core/config";
 import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
 
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ workspacePrefix: string; code: string }>;
   searchParams: Promise<{ __country?: string; __device?: string }>;
+}
+
+async function getSha256Hash(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export default async function RedirectPage({
@@ -64,7 +71,7 @@ export default async function RedirectPage({
   const userAgent = reqHeaders.get("user-agent") || "";
   const referrer = reqHeaders.get("referer") || "Direct";
   const rawIp = reqHeaders.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-  const ipHash = createHash("sha256").update(rawIp).digest("hex");
+  const ipHash = await getSha256Hash(rawIp);
 
   let device = "Desktop";
   if (__device && (process.env.NODE_ENV === "development" || IS_DEMO_MODE)) {
@@ -76,9 +83,13 @@ export default async function RedirectPage({
   }
 
   let browser = "Unknown";
-  if (/chrome/i.test(userAgent)) browser = "Chrome";
-  else if (/safari/i.test(userAgent)) browser = "Safari";
-  else if (/firefox/i.test(userAgent)) browser = "Firefox";
+  if (/chrome/i.test(userAgent)) {
+    browser = "Chrome";
+  } else if (/safari/i.test(userAgent)) {
+    browser = "Safari";
+  } else if (/firefox/i.test(userAgent)) {
+    browser = "Firefox";
+  }
 
   let country = "Unknown";
   const geoCountry = reqHeaders.get("x-vercel-ip-country");
@@ -107,7 +118,9 @@ export default async function RedirectPage({
 
   if (link.geoRouting && country !== "Unknown") {
     const geoMatch = link.geoRouting[country.toUpperCase()];
-    if (geoMatch) targetUrl = geoMatch;
+    if (geoMatch) {
+      targetUrl = geoMatch;
+    }
   }
 
   if (device === "Mobile") {
