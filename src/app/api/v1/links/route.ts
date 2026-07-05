@@ -136,6 +136,18 @@ export async function POST(req: Request) {
 
     const linkId = crypto.randomUUID();
 
+    const expiresAtDate =
+      validated.expiresAt && validated.expiresAt.trim() !== ""
+        ? new Date(validated.expiresAt)
+        : null;
+
+    if (expiresAtDate && isNaN(expiresAtDate.getTime())) {
+      return NextResponse.json(
+        { error: "INVALID_EXPIRES_AT" },
+        { status: 400 }
+      );
+    }
+
     await db.insert(links).values({
       id: linkId,
       workspaceId: validated.workspaceId,
@@ -143,7 +155,7 @@ export async function POST(req: Request) {
       shortCode: cleanShortCode,
       title: validated.title || validated.originalUrl,
       password: validated.password || null,
-      expiresAt: validated.expiresAt ? new Date(validated.expiresAt) : null,
+      expiresAt: expiresAtDate,
       maxClicks: validated.maxClicks || null,
       iosUrl: validated.iosUrl || null,
       androidUrl: validated.androidUrl || null,

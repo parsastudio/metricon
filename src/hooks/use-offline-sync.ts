@@ -34,6 +34,15 @@ export function useOfflineSync(
       const queue = await get<PendingAction[]>(`sync_queue_${workspaceId}`);
       if (!queue || queue.length === 0) return;
       const remainingQueue: PendingAction[] = [];
+      const unrecoverableErrors = [
+        "LIMIT_REACHED",
+        "SHORT_CODE_EXISTS",
+        "FORBIDDEN",
+        "RESERVED_SHORT_CODE",
+        "LINK_NOT_FOUND",
+        "WORKSPACE_NOT_FOUND",
+      ];
+
       for (const action of queue) {
         try {
           let res: { success: boolean; error?: string } = { success: false };
@@ -49,13 +58,21 @@ export function useOfflineSync(
               action.payload.isActive as boolean
             );
           }
+
           if (!res.success) {
-            remainingQueue.push(action);
+            if (res.error && unrecoverableErrors.includes(res.error)) {
+              toast.error(
+                `Offline action discarded: ${res.error.replace(/_/g, " ")}`
+              );
+            } else {
+              remainingQueue.push(action);
+            }
           }
         } catch {
           remainingQueue.push(action);
         }
       }
+
       if (remainingQueue.length === 0) {
         await del(`sync_queue_${workspaceId}`);
         toast.success("All offline interactions synchronized with cloud!");
@@ -119,6 +136,7 @@ export function useOfflineSync(
   const createLinkOffline = useCallback(
     async (data: Record<string, unknown>) => {
       const tempId = `optimistic-${crypto.randomUUID()}`;
+      const nowString = new Date().toISOString();
       const newLink: LinkItem = {
         id: tempId,
         workspaceId: workspaceId,
@@ -133,6 +151,8 @@ export function useOfflineSync(
         androidUrl: (data.androidUrl as string) || null,
         desktopUrl: (data.desktopUrl as string) || null,
         geoRouting: (data.geoRouting as Record<string, string>) || null,
+        createdAt: nowString,
+        updatedAt: nowString,
       };
       const updated = [newLink, ...links];
       setLinks(updated);
@@ -173,6 +193,7 @@ export function useOfflineSync(
             androidUrl: (data.androidUrl as string) || l.androidUrl,
             geoRouting:
               (data.geoRouting as Record<string, string>) || l.geoRouting,
+            updatedAt: new Date().toISOString(),
           };
         }
         return l;
@@ -202,7 +223,9 @@ export function useOfflineSync(
   const toggleLinkOffline = useCallback(
     async (linkId: string, isActive: boolean) => {
       const updated = links.map((l) =>
-        l.id === linkId ? { ...l, isActive } : l
+        l.id === linkId
+          ? { ...l, isActive, updatedAt: new Date().toISOString() }
+          : l
       );
       setLinks(updated);
       await set(`links_cache_${workspaceId}`, updated);

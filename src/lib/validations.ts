@@ -74,7 +74,11 @@ export const createLinkSchema = z.object({
     .regex(/^[a-zA-Z0-9-]+$/),
   title: z.string().optional(),
   password: z.string().optional(),
-  expiresAt: z.string().optional(),
+  expiresAt: z
+    .string()
+    .refine((val) => !val || !isNaN(Date.parse(val)))
+    .optional()
+    .or(z.literal("")),
   maxClicks: z.number().int().positive().optional(),
   iosUrl: z.string().url().optional().or(z.literal("")),
   androidUrl: z.string().url().optional().or(z.literal("")),
@@ -88,7 +92,11 @@ export const updateLinkSchema = z.object({
   originalUrl: z.string().url(),
   title: z.string().optional(),
   password: z.string().optional(),
-  expiresAt: z.string().optional(),
+  expiresAt: z
+    .string()
+    .refine((val) => !val || !isNaN(Date.parse(val)))
+    .optional()
+    .or(z.literal("")),
   maxClicks: z.number().int().positive().optional(),
   iosUrl: z.string().url().optional().or(z.literal("")),
   androidUrl: z.string().url().optional().or(z.literal("")),
