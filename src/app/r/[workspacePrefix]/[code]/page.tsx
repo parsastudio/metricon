@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { links, workspaces, analytics } from "@/lib/schema";
-import { eq, and, count } from "drizzle-orm";
+import { analytics } from "@/lib/schema";
+import { eq, count } from "drizzle-orm";
 import { recordClick } from "@/actions/analytics";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
@@ -8,6 +8,7 @@ import { createHash } from "crypto";
 import { after } from "next/server";
 import { IS_DEMO_MODE } from "@/core/config";
 import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
+import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -23,21 +24,13 @@ export default async function RedirectPage({
   const { workspacePrefix, code } = await params;
   const { __country, __device } = await searchParams;
 
-  const [workspace] = await db
-    .select()
-    .from(workspaces)
-    .where(eq(workspaces.shortPrefix, workspacePrefix))
-    .limit(1);
+  const workspace = await getCachedWorkspace(workspacePrefix);
 
   if (!workspace) {
     redirect("/expired");
   }
 
-  const [link] = await db
-    .select()
-    .from(links)
-    .where(and(eq(links.workspaceId, workspace.id), eq(links.shortCode, code)))
-    .limit(1);
+  const link = await getCachedLink(workspace.id, code);
 
   if (!link || !link.isActive) {
     redirect("/expired");

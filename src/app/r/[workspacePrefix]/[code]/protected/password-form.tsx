@@ -40,6 +40,14 @@ export function PasswordForm({
         if (res.error === "INCORRECT_PASSWORD") {
           setError("The password entered is incorrect.");
           toast.error("Incorrect password");
+        } else if (
+          res.error === "INCORRECT_PASSWORD_LOCKED" ||
+          res.error === "LOCKED_OUT"
+        ) {
+          setError(
+            "Too many failed attempts. You are locked out for 15 minutes."
+          );
+          toast.error("Brute-force protection active. Locked out.");
         } else {
           setError("An error occurred during verification.");
           toast.error("Verification failed");

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces } from "@/actions/workspace";
+import { getWorkspaces, createWorkspace } from "@/actions/workspace";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -81,6 +81,7 @@ export default async function DashboardLayout({
           <WorkspaceSwitcher
             workspaces={workspaces}
             currentWorkspace={currentWorkspace}
+            onCreateWorkspace={createWorkspace}
           />
 
           <DashboardNav items={menuItems} />

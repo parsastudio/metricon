@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { links, workspaces, analytics } from "@/lib/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
+import { cookies, revalidateTag } from "next/headers";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 
 export async function getLinks(workspaceId: string) {
@@ -129,6 +130,8 @@ export async function createLink(data: {
       clicksCount: 0,
     });
 
+    revalidateTag(`link-${validated.workspaceId}-${cleanShortCode}`);
+
     return { success: true };
   } catch (error) {
     if (
@@ -189,6 +192,8 @@ export async function updateLink(data: {
       })
       .where(eq(links.id, validated.linkId));
 
+    revalidateTag(`link-${validated.workspaceId}-${link.shortCode}`);
+
     return { success: true };
   } catch (error) {
     if (
@@ -209,10 +214,20 @@ export async function toggleLinkActiveStatus(
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
 
-    await db
-      .update(links)
-      .set({ isActive, updatedAt: new Date() })
-      .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
+    const [link] = await db
+      .select({ shortCode: links.shortCode })
+      .from(links)
+      .where(eq(links.id, linkId))
+      .limit(1);
+
+    if (link) {
+      await db
+        .update(links)
+        .set({ isActive, updatedAt: new Date() })
+        .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
+
+      revalidateTag(`link-${workspaceId}-${link.shortCode}`);
+    }
 
     return { success: true };
   } catch (error) {
@@ -230,9 +245,19 @@ export async function deleteLink(workspaceId: string, linkId: string) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner", "admin"]);
 
-    await db
-      .delete(links)
-      .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
+    const [link] = await db
+      .select({ shortCode: links.shortCode })
+      .from(links)
+      .where(eq(links.id, linkId))
+      .limit(1);
+
+    if (link) {
+      await db
+        .delete(links)
+        .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
+
+      revalidateTag(`link-${workspaceId}-${link.shortCode}`);
+    }
 
     return { success: true };
   } catch (error) {
@@ -252,6 +277,15 @@ export async function verifyLinkPassword(
   passwordEntered: string
 ) {
   try {
+    const cookieStore = await cookies();
+    const lockoutCookieName = `lockout_${workspacePrefix}_${code}`;
+    const attemptsCookieName = `attempts_${workspacePrefix}_${code}`;
+
+    const isLockedOut = cookieStore.get(lockoutCookieName)?.value === "true";
+    if (isLockedOut) {
+      return { success: false, error: "LOCKED_OUT" };
+    }
+
     const [workspace] = await db
       .select()
       .from(workspaces)
@@ -273,11 +307,36 @@ export async function verifyLinkPassword(
     if (!link) {
       return { success: false, error: "LINK_NOT_FOUND" };
     }
+
     if (link.password !== passwordEntered) {
-      return { success: false, error: "INCORRECT_PASSWORD" };
+      const currentAttemptsVal = cookieStore.get(attemptsCookieName)?.value;
+      const attempts = currentAttemptsVal
+        ? parseInt(currentAttemptsVal, 10) + 1
+        : 1;
+
+      if (attempts >= 5) {
+        cookieStore.set(lockoutCookieName, "true", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 900,
+        });
+        cookieStore.delete(attemptsCookieName);
+        return { success: false, error: "INCORRECT_PASSWORD_LOCKED" };
+      } else {
+        cookieStore.set(attemptsCookieName, String(attempts), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 900,
+        });
+        return { success: false, error: "INCORRECT_PASSWORD" };
+      }
     }
 
-    const cookieStore = await cookies();
+    cookieStore.delete(attemptsCookieName);
+    cookieStore.delete(lockoutCookieName);
+
     cookieStore.set(`link_unlocked_${workspacePrefix}_${code}`, "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

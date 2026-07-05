@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { createWorkspace } from "@/actions/workspace";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,11 +18,16 @@ interface Workspace {
 interface WorkspaceSwitcherProps {
   workspaces: Workspace[];
   currentWorkspace: Workspace;
+  onCreateWorkspace: (
+    name: string,
+    slug: string
+  ) => Promise<{ id: string; slug: string }>;
 }
 
 export function WorkspaceSwitcher({
   workspaces,
   currentWorkspace,
+  onCreateWorkspace,
 }: WorkspaceSwitcherProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -36,7 +40,7 @@ export function WorkspaceSwitcher({
     if (!name || !slug) return;
     setLoading(true);
     try {
-      const res = await createWorkspace(name, slug);
+      const res = await onCreateWorkspace(name, slug);
       setIsDialogOpen(false);
       setName("");
       setSlug("");

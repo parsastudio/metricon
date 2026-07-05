@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { createLink } from "@/actions/links";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { QuotaGatekeeper } from "@/components/quota-gatekeeper";
@@ -12,9 +11,26 @@ import { toast } from "sonner";
 interface LinkCreatorProps {
   workspaceId: string;
   isPro: boolean;
+  onCreateLink: (data: {
+    workspaceId: string;
+    originalUrl: string;
+    shortCode: string;
+    title?: string;
+    password?: string;
+    expiresAt?: string;
+    maxClicks?: number;
+    iosUrl?: string;
+    androidUrl?: string;
+    desktopUrl?: string;
+    geoRouting?: Record<string, string>;
+  }) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function LinkCreator({ workspaceId, isPro }: LinkCreatorProps) {
+export function LinkCreator({
+  workspaceId,
+  isPro,
+  onCreateLink,
+}: LinkCreatorProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = React.useState(false);
@@ -74,7 +90,7 @@ export function LinkCreator({ workspaceId, isPro }: LinkCreatorProps) {
 
     setLoading(true);
     try {
-      const res = await createLink({
+      const res = await onCreateLink({
         workspaceId,
         originalUrl,
         shortCode,

@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/actions/auth";
 import { getWorkspaces } from "@/actions/workspace";
-import { getLinks } from "@/actions/links";
+import { getLinks, createLink } from "@/actions/links";
 import { LinkCreator } from "@/components/link-creator";
 import { LinksTable } from "@/components/links-table";
 import { SeedButton } from "@/components/analytics/seed-button";
@@ -35,6 +35,7 @@ export default async function LinksPage({
         <LinkCreator
           workspaceId={currentWorkspace.id}
           isPro={currentWorkspace.plan === "pro"}
+          onCreateLink={createLink}
         />
       </div>
 
