@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { analytics, links } from "@/lib/schema";
-import { eq, gte, lte, and, inArray } from "drizzle-orm";
+import { eq, gte, lte, and, inArray, sql } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 
 export async function getWorkspaceAnalytics(
@@ -151,6 +151,18 @@ export async function recordClick(
     ipHash: info.ipHash,
     timestamp: new Date(),
   });
+}
+
+export async function syncLinksClicks() {
+  await db.execute(sql`
+    UPDATE links
+    SET clicks_count = COALESCE((
+      SELECT CAST(COUNT(*) AS integer)
+      FROM analytics
+      WHERE analytics.link_id = links.id
+    ), 0),
+    updated_at = NOW();
+  `);
 }
 
 export async function seedMockData(workspaceId: string) {

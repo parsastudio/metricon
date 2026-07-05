@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { links, workspaces, failedAttempts } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
+import { getClientIp } from "@/lib/geoip";
 
 async function getSha256Hash(message: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(message);
@@ -28,8 +29,7 @@ export async function verifyLinkPassword(
 ) {
   try {
     const headersList = await headers();
-    const rawIp =
-      headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const rawIp = getClientIp(headersList);
     const ipHash = await getSha256Hash(rawIp);
 
     const [workspace] = await db

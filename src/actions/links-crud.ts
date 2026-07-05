@@ -26,12 +26,10 @@ export async function getLinks(workspaceId: string) {
       geoRouting: links.geoRouting,
       createdAt: links.createdAt,
       updatedAt: links.updatedAt,
-      clicksCount: sql<number>`cast(count(${analytics.id}) as integer)`,
+      clicksCount: links.clicksCount,
     })
     .from(links)
-    .leftJoin(analytics, eq(links.id, analytics.linkId))
     .where(eq(links.workspaceId, workspaceId))
-    .groupBy(links.id)
     .orderBy(desc(links.createdAt));
 }
 

@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { PasswordForm } from "./password-form";
+import { generateUnlockSignature } from "@/actions/links-security";
 
 export const dynamic = "force-dynamic";
 
@@ -43,9 +44,16 @@ export default async function ProtectedPage({ params }: PageProps) {
   }
 
   const cookieStore = await cookies();
-  const isUnlocked =
-    cookieStore.get(`link_unlocked_${workspacePrefix}_${code}`)?.value ===
-    "true";
+  const unlockedCookie = cookieStore.get(
+    `link_unlocked_${workspacePrefix}_${code}`
+  )?.value;
+
+  const expectedSignature = await generateUnlockSignature(
+    workspacePrefix,
+    code
+  );
+
+  const isUnlocked = unlockedCookie === expectedSignature;
 
   if (isUnlocked) {
     redirect(`/r/${workspacePrefix}/${code}`);
