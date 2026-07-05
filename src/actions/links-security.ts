@@ -4,14 +4,8 @@ import { db } from "@/lib/db";
 import { links, workspaces, failedAttempts } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
-import { getClientIp } from "@/lib/geoip";
-
-async function getSha256Hash(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+import { getClientIp } from "@/geoip";
+import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
 
 export async function generateUnlockSignature(
   workspacePrefix: string,
@@ -19,7 +13,7 @@ export async function generateUnlockSignature(
 ): Promise<string> {
   const secret =
     process.env.STRIPE_SECRET_KEY || "fallback_encryption_token_2026";
-  return await getSha256Hash(`${workspacePrefix}:${code}:${secret}:unlocked`);
+  return await hashSha256(`${workspacePrefix}:${code}:${secret}:unlocked`);
 }
 
 export async function verifyLinkPassword(
@@ -30,7 +24,7 @@ export async function verifyLinkPassword(
   try {
     const headersList = await headers();
     const rawIp = getClientIp(headersList);
-    const ipHash = await getSha256Hash(rawIp);
+    const ipHash = await getSaltedIpHash(rawIp);
 
     const [workspace] = await db
       .select()

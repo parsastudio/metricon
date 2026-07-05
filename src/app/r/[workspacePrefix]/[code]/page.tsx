@@ -9,6 +9,7 @@ import { IS_DEMO_MODE } from "@/core/config";
 import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
 import { resolveCountryFromHeaders, getClientIp } from "@/lib/geoip";
+import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -18,20 +19,13 @@ interface PageProps {
   searchParams: Promise<{ __country?: string; __device?: string }>;
 }
 
-async function getSha256Hash(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 async function generateUnlockSignature(
   workspacePrefix: string,
   code: string
 ): Promise<string> {
   const secret =
     process.env.STRIPE_SECRET_KEY || "fallback_encryption_token_2026";
-  return await getSha256Hash(`${workspacePrefix}:${code}:${secret}:unlocked`);
+  return await hashSha256(`${workspacePrefix}:${code}:${secret}:unlocked`);
 }
 
 export default async function RedirectPage({
@@ -80,7 +74,7 @@ export default async function RedirectPage({
   const userAgent = reqHeaders.get("user-agent") || "";
   const referrer = reqHeaders.get("referer") || "Direct";
   const rawIp = getClientIp(reqHeaders);
-  const ipHash = await getSha256Hash(rawIp);
+  const ipHash = await getSaltedIpHash(rawIp);
 
   let device = "Desktop";
   if (__device && (process.env.NODE_ENV === "development" || IS_DEMO_MODE)) {
