@@ -4,6 +4,8 @@ import { links, workspaceMembers, workspaces } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { getSessionUser } from "@/actions/auth";
 import { createLinkSchema } from "@/lib/validations";
+import { getClientIp } from "@/lib/geoip";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 async function getAuthorizedUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("authorization");
@@ -63,6 +65,12 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const rawIp = getClientIp(req.headers);
+    const isAllowed = await checkRateLimit(`rate_limit_create_link_${rawIp}`);
+    if (!isAllowed) {
+      return NextResponse.json({ error: "TOO_MANY_REQUESTS" }, { status: 429 });
+    }
+
     const userId = await getAuthorizedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
