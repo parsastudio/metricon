@@ -1,56 +1,7 @@
-import { Reader } from "mmdb-lib";
-
-interface GeoLiteCountryResponse {
-  country?: {
-    iso_code?: string;
-  };
-}
-
-let cachedReader: Reader | null = null;
-
-async function getReader(): Promise<Reader | null> {
-  if (cachedReader) {
-    return cachedReader;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
-
-    const response = await fetch(
-      "https://cdn.jsdelivr.net/npm/@ip-location-db/geolite2-country-mmdb/geolite2-country.mmdb",
-      {
-        signal: controller.signal,
-        next: { revalidate: 86400 },
-      }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const buffer = await response.arrayBuffer();
-      cachedReader = new Reader(new Uint8Array(buffer));
-      return cachedReader;
-    }
-  } catch {}
-
-  return null;
-}
-
 export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   if (!rawIp || rawIp === "127.0.0.1" || rawIp === "::1") {
     return "Unknown";
   }
-
-  try {
-    const reader = await getReader();
-    if (reader) {
-      const result = reader.lookup(rawIp) as GeoLiteCountryResponse | null;
-      if (result?.country?.iso_code) {
-        return result.country.iso_code.toUpperCase();
-      }
-    }
-  } catch {}
 
   const services = [
     async (ip: string, signal: AbortSignal) => {
@@ -86,7 +37,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   ];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 800);
+  const timeoutId = setTimeout(() => controller.abort(), 300);
 
   try {
     const country = await Promise.any(

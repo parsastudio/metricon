@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces } from "@/actions/workspace-crud";
+import { getWorkspaces } from "@/actions/workspace";
 import { db } from "@/lib/db";
 import { workspaces, workspaceMembers } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
@@ -74,7 +74,7 @@ export default async function SettingsPage({
 
       <ApiCredentialsCard
         workspaceId={workspaceData.id}
-        userId={user.id}
+        initialApiKey={user.apiKey || ""}
         origin={origin}
       />
 

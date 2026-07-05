@@ -17,10 +17,19 @@ export async function getWorkspaceAnalytics(
   let endDate = new Date();
 
   if (customStart && customEnd) {
-    startDate = new Date(customStart);
-    startDate.setHours(0, 0, 0, 0);
-    endDate = new Date(customEnd);
-    endDate.setHours(23, 59, 59, 999);
+    const startParsed = new Date(customStart);
+    const endParsed = new Date(customEnd);
+
+    if (!isNaN(startParsed.getTime()) && !isNaN(endParsed.getTime())) {
+      startDate = startParsed;
+      startDate.setHours(0, 0, 0, 0);
+      endDate = endParsed;
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      const now = new Date();
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    }
   } else {
     const now = new Date();
     if (timeframe === "24h") {

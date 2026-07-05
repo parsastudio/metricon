@@ -59,16 +59,28 @@ export async function verifyLinkPassword(
       )
       .limit(1);
 
+    const isLockExpired =
+      existingRecord &&
+      existingRecord.lockedUntil &&
+      new Date() >= new Date(existingRecord.lockedUntil);
+
     if (
       existingRecord &&
       existingRecord.lockedUntil &&
+      !isLockExpired &&
       new Date() < new Date(existingRecord.lockedUntil)
     ) {
       return { success: false, error: "LOCKED_OUT" };
     }
 
+    const baseAttempts = isLockExpired
+      ? 0
+      : existingRecord
+        ? existingRecord.attempts
+        : 0;
+
     if (link.password !== passwordEntered) {
-      const attempts = existingRecord ? existingRecord.attempts + 1 : 1;
+      const attempts = baseAttempts + 1;
 
       if (attempts >= 5) {
         const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
@@ -91,7 +103,7 @@ export async function verifyLinkPassword(
         if (existingRecord) {
           await db
             .update(failedAttempts)
-            .set({ attempts, updatedAt: new Date() })
+            .set({ attempts, lockedUntil: null, updatedAt: new Date() })
             .where(eq(failedAttempts.id, existingRecord.id));
         } else {
           await db.insert(failedAttempts).values({

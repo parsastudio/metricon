@@ -64,6 +64,20 @@ export function useOfflineSync(
               toast.error(
                 `Offline action discarded: ${res.error.replace(/_/g, " ")}`
               );
+              if (action.type === "CREATE") {
+                const tempShortCode = action.payload.shortCode as string;
+                setLinks((prev) => {
+                  const next = prev.filter(
+                    (l) =>
+                      !(
+                        l.id.startsWith("optimistic-") &&
+                        l.shortCode === tempShortCode
+                      )
+                  );
+                  set(`links_cache_${workspaceId}`, next).catch(() => {});
+                  return next;
+                });
+              }
             } else {
               remainingQueue.push(action);
             }

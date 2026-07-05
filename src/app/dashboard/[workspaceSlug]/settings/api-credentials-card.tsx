@@ -2,30 +2,39 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Code2, Terminal, Copy, Check, Eye, EyeOff } from "lucide-react";
+import {
+  Code2,
+  Terminal,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  RefreshCw,
+} from "lucide-react";
+import { rotateApiKey } from "@/actions/auth";
 import { toast } from "sonner";
 
 interface ApiCredentialsProps {
   workspaceId: string;
-  userId: string;
+  initialApiKey: string;
   origin: string;
 }
 
 export function ApiCredentialsCard({
   workspaceId,
-  userId,
+  initialApiKey,
   origin,
 }: ApiCredentialsProps) {
   const [showKey, setShowKey] = React.useState(false);
+  const [apiKey, setApiKey] = React.useState(initialApiKey);
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
-
-  const bearerToken = userId;
+  const [loading, setLoading] = React.useState(false);
 
   const listUrl = `curl -X GET "${origin}/api/v1/links?workspaceId=${workspaceId}" \\
-  -H "Authorization: Bearer ${bearerToken}"`;
+  -H "Authorization: Bearer ${apiKey}"`;
 
   const createUrl = `curl -X POST "${origin}/api/v1/links" \\
-  -H "Authorization: Bearer ${bearerToken}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "workspaceId": "${workspaceId}",
@@ -38,6 +47,21 @@ export function ApiCredentialsCard({
     setCopiedCode(id);
     toast.success("Copied to clipboard successfully");
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleRotateKey = async () => {
+    setLoading(true);
+    try {
+      const res = await rotateApiKey();
+      if (res.success && res.apiKey) {
+        setApiKey(res.apiKey);
+        toast.success("API key successfully regenerated!");
+      }
+    } catch {
+      toast.error("Failed to regenerate API credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,35 +82,50 @@ export function ApiCredentialsCard({
           </div>
         </div>
 
-        <div className="border-border bg-muted/50 flex items-center justify-between gap-3 rounded-lg border px-3 py-1.5 text-xs">
-          <span className="text-muted-foreground font-semibold">
-            Bearer Secret:
-          </span>
-          <span className="font-mono font-bold">
-            {showKey ? bearerToken : "••••••••••••••••••••••••••••••••"}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              {showKey ? (
-                <EyeOff className="size-4" />
-              ) : (
-                <Eye className="size-4" />
-              )}
-            </button>
-            <button
-              onClick={() => copyToClipboard(bearerToken, "token")}
-              className="text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              {copiedCode === "token" ? (
-                <Check className="size-4 text-emerald-500" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="border-border bg-muted/50 flex items-center justify-between gap-3 rounded-lg border px-3 py-1.5 text-xs">
+            <span className="text-muted-foreground font-semibold">
+              Bearer Secret:
+            </span>
+            <span className="font-mono font-bold">
+              {showKey ? apiKey : "••••••••••••••••••••••••••••••••"}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                {showKey ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
+              <button
+                onClick={() => copyToClipboard(apiKey, "token")}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                {copiedCode === "token" ? (
+                  <Check className="size-4 text-emerald-500" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </button>
+            </div>
           </div>
+
+          <Button
+            onClick={handleRotateKey}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="cursor-pointer gap-1"
+          >
+            <RefreshCw
+              className={`size-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            Rotate Key
+          </Button>
         </div>
       </div>
 

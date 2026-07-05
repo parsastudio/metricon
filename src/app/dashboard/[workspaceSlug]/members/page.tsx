@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces } from "@/actions/workspace-crud";
+import { getWorkspaces } from "@/actions/workspace";
 import { getWorkspaceMembers } from "@/actions/workspace-members";
 import { TeamMembers } from "@/components/team-members";
 import { redirect } from "next/navigation";

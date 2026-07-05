@@ -51,6 +51,19 @@ export async function getSessionUser() {
   return user || null;
 }
 
+export async function rotateApiKey() {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("UNAUTHORIZED");
+  }
+  const newApiKey = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
+  await db
+    .update(users)
+    .set({ apiKey: newApiKey, updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+  return { success: true, apiKey: newApiKey };
+}
+
 export async function loginUser(email: string, name?: string) {
   const cookieStore = await cookies();
   const validated = loginSchema.parse({ email });
@@ -71,12 +84,14 @@ export async function loginUser(email: string, name?: string) {
       const workspaceSlug =
         cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-") + "-org";
       const shortPrefix = await generateUniquePrefix();
+      const initialApiKey = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
 
       await db.transaction(async (tx) => {
         await tx.insert(users).values({
           id: userId,
           email: cleanEmail,
           name: name || cleanEmail.split("@")[0],
+          apiKey: initialApiKey,
         });
 
         await tx.insert(workspaces).values({
@@ -102,6 +117,7 @@ export async function loginUser(email: string, name?: string) {
         email: cleanEmail,
         name: name || cleanEmail.split("@")[0],
         image: null,
+        apiKey: initialApiKey,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -184,12 +200,14 @@ export async function verifyMagicToken(token: string) {
     const workspaceSlug =
       tokenRecord.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-") + "-org";
     const shortPrefix = await generateUniquePrefix();
+    const initialApiKey = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
 
     await db.transaction(async (tx) => {
       await tx.insert(users).values({
         id: userId,
         email: tokenRecord.email,
         name: tokenRecord.email.split("@")[0],
+        apiKey: initialApiKey,
       });
 
       await tx.insert(workspaces).values({
@@ -203,8 +221,8 @@ export async function verifyMagicToken(token: string) {
 
       await tx.insert(workspaceMembers).values({
         id: crypto.randomUUID(),
-        workspaceId,
-        userId,
+        workspaceId: workspaceId,
+        userId: userId,
         role: "owner",
       });
     });
@@ -215,6 +233,7 @@ export async function verifyMagicToken(token: string) {
       email: tokenRecord.email,
       name: tokenRecord.email.split("@")[0],
       image: null,
+      apiKey: initialApiKey,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   name: text("name"),
   email: text("email").notNull().unique(),
   image: text("image"),
+  apiKey: text("api_key").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -226,6 +227,6 @@ export const analyticsRelations = relations(analytics, ({ one }) => ({
 export const failedAttemptsRelations = relations(failedAttempts, ({ one }) => ({
   link: one(links, {
     fields: [failedAttempts.linkId],
-    references: [links.id],
+    references: [failedAttempts.id],
   }),
 }));

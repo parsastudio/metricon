@@ -43,6 +43,34 @@ export async function POST(req: Request) {
         });
       }
     }
+    if (event.type === "customer.subscription.updated") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const subscriptionId = subscription.id;
+      const status = subscription.status;
+      await db.transaction(async (tx) => {
+        if (status === "active" || status === "trialing") {
+          await tx
+            .update(workspaces)
+            .set({
+              plan: "pro",
+              linkLimit: 1000000,
+              stripeSubscriptionId: subscriptionId,
+              updatedAt: new Date(),
+            })
+            .where(eq(workspaces.stripeSubscriptionId, subscriptionId));
+        } else {
+          await tx
+            .update(workspaces)
+            .set({
+              plan: "free",
+              linkLimit: 10,
+              stripeSubscriptionId: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(workspaces.stripeSubscriptionId, subscriptionId));
+        }
+      });
+    }
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
       const subscriptionId = subscription.id;

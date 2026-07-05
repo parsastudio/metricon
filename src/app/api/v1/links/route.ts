@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { links, workspaceMembers, workspaces } from "@/lib/schema";
+import { links, workspaceMembers, workspaces, users } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { getSessionUser } from "@/actions/auth";
 import { createLinkSchema } from "@/lib/validations";
@@ -11,7 +11,14 @@ async function getAuthorizedUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7).trim();
-    if (token) return token;
+    if (token) {
+      const [user] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.apiKey, token))
+        .limit(1);
+      return user?.id || null;
+    }
   }
   const user = await getSessionUser();
   return user?.id || null;
@@ -137,7 +144,8 @@ export async function POST(req: Request) {
     const linkId = crypto.randomUUID();
 
     const expiresAtDate =
-      validated.expiresAt && validated.expiresAt.trim() !== ""
+      typeof validated.expiresAt === "string" &&
+      validated.expiresAt.trim() !== ""
         ? new Date(validated.expiresAt)
         : null;
 

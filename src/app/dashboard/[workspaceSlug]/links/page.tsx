@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/actions/auth";
-import { getWorkspaces } from "@/actions/workspace-crud";
+import { getWorkspaces } from "@/actions/workspace";
 import {
   getLinks,
   createLink,

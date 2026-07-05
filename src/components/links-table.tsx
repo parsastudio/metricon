@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LinkEditor } from "./link-editor";
 import { QrCodeDialog } from "./qr-code-dialog";
 import { LinkItem } from "@/lib/validations";
+import { safeCopyToClipboard } from "@/lib/utils";
 
 interface LinksTableProps {
   workspaceId: string;
@@ -100,12 +101,16 @@ export function LinksTable({
     }
   };
 
-  const handleCopyLink = (shortCode: string, linkId: string) => {
+  const handleCopyLink = async (shortCode: string, linkId: string) => {
     const fullUrl = `${origin}/r/${workspacePrefix}/${shortCode}`;
-    navigator.clipboard.writeText(fullUrl);
-    setCopiedId(linkId);
-    toast.success("Short link copied to clipboard!");
-    setTimeout(() => setCopiedId(null), 2000);
+    const success = await safeCopyToClipboard(fullUrl);
+    if (success) {
+      setCopiedId(linkId);
+      toast.success("Short link copied to clipboard!");
+      setTimeout(() => setCopiedId(null), 2000);
+    } else {
+      toast.error("Failed to copy link to clipboard");
+    }
   };
 
   const filteredLinks = React.useMemo(() => {
