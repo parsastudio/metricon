@@ -5,6 +5,7 @@ import { getWorkspaces } from "@/actions/workspace";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LogoutButton } from "@/components/logout-button";
 import {
   Link2,
   Users,
@@ -12,9 +13,7 @@ import {
   CreditCard,
   Settings,
   Sparkles,
-  LogOut,
 } from "lucide-react";
-import Link from "next/link";
 
 export default async function DashboardLayout({
   children,
@@ -96,12 +95,7 @@ export default async function DashboardLayout({
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link
-              href="/auth"
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="size-4" />
-            </Link>
+            <LogoutButton />
           </div>
         </div>
       </aside>

@@ -2,6 +2,7 @@ import { getSessionUser } from "@/actions/auth";
 import { getWorkspaces } from "@/actions/workspace";
 import { getBillingInfo } from "@/actions/billing";
 import { BillingUpgradeButton } from "@/components/billing-upgrade-button";
+import { BillingSuccessAlert } from "@/components/billing-success-alert";
 import {
   Sparkles,
   CreditCard,
@@ -16,10 +17,14 @@ import { count, eq } from "drizzle-orm";
 
 export default async function BillingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
+  searchParams: Promise<{ session_id?: string; sandbox?: string }>;
 }) {
   const { workspaceSlug } = await params;
+  const { session_id, sandbox } = await searchParams;
+
   const user = await getSessionUser();
   if (!user) redirect("/auth");
 
@@ -41,6 +46,10 @@ export default async function BillingPage({
 
   const isCloseToLimit = !isPro && percentage >= 80;
 
+  const hasStripeSuccess = !!session_id;
+  const isSandboxSuccess = sandbox === "success";
+  const isSandboxDowngrade = sandbox === "downgrade";
+
   return (
     <div className="space-y-6">
       <div>
@@ -49,6 +58,10 @@ export default async function BillingPage({
           Check resource limits, usage boundaries, and active plan metadata.
         </p>
       </div>
+
+      {hasStripeSuccess && <BillingSuccessAlert type="stripe" />}
+      {isSandboxSuccess && <BillingSuccessAlert type="sandbox" />}
+      {isSandboxDowngrade && <BillingSuccessAlert type="downgrade" />}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="space-y-6">
