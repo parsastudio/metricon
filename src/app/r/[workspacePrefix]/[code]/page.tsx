@@ -96,6 +96,8 @@ export default async function RedirectPage({ params }: PageProps) {
     } else if (link.androidUrl && /android/i.test(userAgent)) {
       targetUrl = link.androidUrl;
     }
+  } else if (device === "Desktop" && link.desktopUrl) {
+    targetUrl = link.desktopUrl;
   }
 
   redirect(targetUrl);
