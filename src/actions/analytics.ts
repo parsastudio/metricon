@@ -2,26 +2,39 @@
 
 import { db } from "@/lib/db";
 import { analytics, links } from "@/lib/schema";
-import { eq, gte, and, sql, inArray } from "drizzle-orm";
+import { eq, gte, lte, and, sql, inArray } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 
 export async function getWorkspaceAnalytics(
   workspaceId: string,
-  timeframe: string
+  timeframe: string,
+  customStart?: string,
+  customEnd?: string
 ) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
 
-  const now = new Date();
   let startDate = new Date();
+  let endDate = new Date();
 
-  if (timeframe === "24h") {
-    startDate.setHours(now.getHours() - 24);
-  } else if (timeframe === "7d") {
-    startDate.setDate(now.getDate() - 7);
-  } else if (timeframe === "30d") {
-    startDate.setDate(now.getDate() - 30);
+  if (customStart && customEnd) {
+    startDate = new Date(customStart);
+    startDate.setHours(0, 0, 0, 0);
+    endDate = new Date(customEnd);
+    endDate.setHours(23, 59, 59, 999);
   } else {
-    startDate.setDate(now.getDate() - 30);
+    const now = new Date();
+    if (timeframe === "24h") {
+      startDate.setHours(now.getHours() - 24);
+    } else if (timeframe === "7d") {
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (timeframe === "30d") {
+      startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    }
   }
 
   const workspaceLinks = await db
@@ -52,7 +65,8 @@ export async function getWorkspaceAnalytics(
     .where(
       and(
         inArray(analytics.linkId, linkIds),
-        gte(analytics.timestamp, startDate)
+        gte(analytics.timestamp, startDate),
+        lte(analytics.timestamp, endDate)
       )
     );
 

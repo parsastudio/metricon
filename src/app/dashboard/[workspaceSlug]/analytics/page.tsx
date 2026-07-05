@@ -3,6 +3,7 @@ import { getWorkspaces } from "@/actions/workspace";
 import { getWorkspaceAnalytics } from "@/actions/analytics";
 import { KPICards } from "@/components/analytics/kpi-cards";
 import { ExportButton } from "@/components/analytics/export-button";
+import { DateRangePicker } from "@/components/analytics/date-range-picker";
 import { SeedButton } from "@/components/analytics/seed-button";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { BarChart3 } from "lucide-react";
@@ -35,11 +36,11 @@ export default async function AnalyticsPage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ tf?: string }>;
+  searchParams: Promise<{ tf?: string; start?: string; end?: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const { tf } = await searchParams;
-  const timeframe = tf || "7d";
+  const { tf, start, end } = await searchParams;
+  const timeframe = tf || (start && end ? "custom" : "7d");
 
   const user = await getSessionUser();
   if (!user) redirect("/auth");
@@ -50,7 +51,9 @@ export default async function AnalyticsPage({
 
   const analyticsData = await getWorkspaceAnalytics(
     currentWorkspace.id,
-    timeframe
+    timeframe,
+    start,
+    end
   );
 
   const hasData = analyticsData.kpi.totalClicks > 0;
@@ -66,8 +69,9 @@ export default async function AnalyticsPage({
         </div>
 
         {hasData && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportButton data={analyticsData} />
+            <DateRangePicker />
 
             <div className="border-border bg-card flex gap-1 rounded-lg border p-1 text-xs font-medium">
               <a
