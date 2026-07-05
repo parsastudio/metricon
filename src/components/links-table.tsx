@@ -3,10 +3,19 @@
 import * as React from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { deleteLink } from "@/actions/links";
-import { Calendar, Key, Trash2, Search, Copy, Check } from "lucide-react";
+import {
+  Calendar,
+  Key,
+  Trash2,
+  Search,
+  Copy,
+  Check,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOrigin } from "@/hooks/use-origin";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LinkItem {
   id: string;
@@ -148,117 +157,118 @@ export function LinksTable({
         </div>
       </div>
 
-      <div className="bg-card border-border overflow-hidden rounded-xl border shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-muted text-muted-foreground border-border border-b font-semibold tracking-wider uppercase">
-              <tr>
-                <th className="p-4">Title / Code</th>
-                <th className="p-4">Destination</th>
-                <th className="p-4">Targeting</th>
-                <th className="p-4 text-center">Clicks</th>
-                <th className="p-4">Security</th>
-                <th className="p-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-border divide-y">
-              {filteredLinks.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="text-muted-foreground p-8 text-center"
-                  >
-                    No matching short codes mapped to current filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredLinks.map((link) => (
-                  <tr
-                    key={link.id}
-                    className="hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="text-foreground font-semibold">
-                        {link.title || "Untitled Link"}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <span className="text-primary font-mono text-[10px]">
-                          /r/{workspacePrefix}/{link.shortCode}
-                        </span>
-                        <button
-                          onClick={() =>
-                            handleCopyLink(link.shortCode, link.id)
-                          }
-                          className="text-muted-foreground hover:text-foreground cursor-pointer rounded-sm p-0.5 transition-colors"
-                          title="Copy short link"
-                        >
-                          {copiedId === link.id ? (
-                            <Check className="size-3 text-emerald-500" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="text-muted-foreground max-w-xs truncate p-4 font-mono">
-                      {link.originalUrl}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5 text-[10px]">
-                        {link.iosUrl && (
-                          <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 font-bold">
-                            iOS
-                          </span>
-                        )}
-                        {link.androidUrl && (
-                          <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 font-bold">
-                            Android
-                          </span>
-                        )}
-                        {link.geoRouting && (
-                          <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 font-bold">
-                            Geo
-                          </span>
-                        )}
-                        {!link.iosUrl &&
-                          !link.androidUrl &&
-                          !link.geoRouting && (
-                            <span className="text-muted-foreground font-mono">
-                              Standard
-                            </span>
-                          )}
-                      </div>
-                    </td>
-                    <td className="p-4 text-center font-mono font-bold">
-                      {link.clicksCount}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5">
-                        {link.password && (
-                          <Key className="text-primary size-3.5" />
-                        )}
-                        {link.expiresAt && (
-                          <Calendar className="text-primary size-3.5" />
-                        )}
-                        {!link.password && !link.expiresAt && (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
+      <div className="space-y-2">
+        <AnimatePresence mode="popLayout">
+          {filteredLinks.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="border-border bg-card text-muted-foreground rounded-xl border p-8 text-center text-xs"
+            >
+              No matching short codes mapped to current filters.
+            </motion.div>
+          ) : (
+            filteredLinks.map((link) => (
+              <motion.div
+                key={link.id}
+                layout
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="border-border bg-card hover:bg-muted/20 hover:border-border/80 flex flex-col justify-between gap-4 rounded-xl border p-4 shadow-xs transition-all sm:flex-row sm:items-center"
+              >
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-foreground truncate text-sm font-semibold">
+                      {link.title || "Untitled Link"}
+                    </h4>
+                    <div className="flex items-center gap-1">
+                      {link.password && <Key className="text-primary size-3" />}
+                      {link.expiresAt && (
+                        <Calendar className="text-primary size-3" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-primary font-bold">
+                        /r/{workspacePrefix}/{link.shortCode}
+                      </span>
                       <button
-                        onClick={() => handleDelete(link.id)}
-                        className="text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg p-1.5 transition-colors"
+                        onClick={() => handleCopyLink(link.shortCode, link.id)}
+                        className="text-muted-foreground hover:text-foreground cursor-pointer rounded-sm p-0.5 transition-colors"
                       >
-                        <Trash2 className="size-4" />
+                        {copiedId === link.id ? (
+                          <Check className="size-3 text-emerald-500" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
                       </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+
+                    <span className="text-muted-foreground hidden sm:inline">
+                      |
+                    </span>
+
+                    <a
+                      href={link.originalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary flex max-w-[200px] items-center gap-1 truncate sm:max-w-[300px]"
+                    >
+                      {link.originalUrl}
+                      <ExternalLink className="size-2.5" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="border-border/60 flex items-center justify-between gap-4 border-t border-dashed pt-3 sm:border-0 sm:pt-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      {link.iosUrl && (
+                        <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[9px] font-bold">
+                          iOS
+                        </span>
+                      )}
+                      {link.androidUrl && (
+                        <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[9px] font-bold">
+                          Android
+                        </span>
+                      )}
+                      {link.geoRouting && (
+                        <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[9px] font-bold">
+                          Geo
+                        </span>
+                      )}
+                      {!link.iosUrl && !link.androidUrl && !link.geoRouting && (
+                        <span className="text-muted-foreground text-[10px]">
+                          Standard
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="bg-muted border-border/60 flex items-center gap-1.5 rounded-lg border px-2.5 py-1">
+                      <span className="bg-primary inline-flex size-1.5 rounded-full" />
+                      <span className="text-foreground font-mono text-xs font-bold">
+                        {link.clicksCount} clicks
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDelete(link.id)}
+                    className="text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg p-1.5 transition-colors"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
