@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   inviteMember,
   removeMember,
+  updateMemberRole,
   revokeWorkspaceInvitation,
   getPendingWorkspaceInvitations,
 } from "@/actions/workspace";
@@ -115,6 +116,23 @@ export function TeamMembers({
         router.refresh();
       } else {
         toast.error("Failed to remove member: " + res.error);
+      }
+    } catch {
+      toast.error("An error occurred");
+    }
+  };
+
+  const handleUpdateRole = async (
+    memberId: string,
+    newRole: "owner" | "admin" | "viewer"
+  ) => {
+    try {
+      const res = await updateMemberRole(workspaceId, memberId, newRole);
+      if (res.success) {
+        toast.success("Member role updated successfully");
+        router.refresh();
+      } else {
+        toast.error("Failed to update member role");
       }
     } catch {
       toast.error("An error occurred");
@@ -257,10 +275,27 @@ export function TeamMembers({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="border-border bg-muted flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium capitalize">
-                  <Shield className="text-primary size-3" />
-                  {member.role}
-                </span>
+                {currentUserRole === "owner" && member.role !== "owner" ? (
+                  <select
+                    value={member.role}
+                    onChange={(e) =>
+                      handleUpdateRole(
+                        member.id,
+                        e.target.value as "owner" | "admin" | "viewer"
+                      )
+                    }
+                    className="border-border bg-background focus:border-primary cursor-pointer rounded-md border px-2.5 py-1 text-xs outline-hidden"
+                  >
+                    <option value="owner">Owner</option>
+                    <option value="admin">Admin</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                ) : (
+                  <span className="border-border bg-muted flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium capitalize">
+                    <Shield className="text-primary size-3" />
+                    {member.role}
+                  </span>
+                )}
                 {currentUserRole === "owner" && member.role !== "owner" && (
                   <button
                     onClick={() => handleRemove(member.id)}

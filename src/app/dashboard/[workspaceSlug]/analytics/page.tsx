@@ -6,6 +6,7 @@ import { TimeSeries } from "@/components/analytics/time-series";
 import { BreakdownTables } from "@/components/analytics/breakdown-tables";
 import { ExportButton } from "@/components/analytics/export-button";
 import { SeedButton } from "@/components/analytics/seed-button";
+import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { BarChart3 } from "lucide-react";
 import { redirect } from "next/navigation";
 
@@ -104,19 +105,25 @@ export default async function AnalyticsPage({
         </div>
       ) : (
         <>
-          <KPICards
-            totalClicks={analyticsData.kpi.totalClicks}
-            uniqueClicks={analyticsData.kpi.uniqueClicks}
-            topLink={analyticsData.kpi.topLink}
-          />
+          <ComponentErrorBoundary>
+            <KPICards
+              totalClicks={analyticsData.kpi.totalClicks}
+              uniqueClicks={analyticsData.kpi.uniqueClicks}
+              topLink={analyticsData.kpi.topLink}
+            />
+          </ComponentErrorBoundary>
 
-          <TimeSeries data={analyticsData.timeSeries} />
+          <ComponentErrorBoundary>
+            <TimeSeries data={analyticsData.timeSeries} />
+          </ComponentErrorBoundary>
 
-          <BreakdownTables
-            countries={analyticsData.countries}
-            referrers={analyticsData.referrers}
-            devices={analyticsData.devices}
-          />
+          <ComponentErrorBoundary>
+            <BreakdownTables
+              countries={analyticsData.countries}
+              referrers={analyticsData.referrers}
+              devices={analyticsData.devices}
+            />
+          </ComponentErrorBoundary>
         </>
       )}
     </div>

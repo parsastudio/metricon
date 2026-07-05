@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createLink } from "@/actions/links";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { QuotaGatekeeper } from "@/components/quota-gatekeeper";
 import { Link2, Sparkles, Smartphone, Globe, Lock, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -349,42 +350,11 @@ export function LinkCreator({ workspaceId, isPro }: LinkCreatorProps) {
         </form>
       </Dialog>
 
-      <Dialog
+      <QuotaGatekeeper
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-      >
-        <div className="space-y-4 text-center">
-          <div className="bg-primary/10 text-primary mx-auto flex size-12 items-center justify-center rounded-full">
-            <Sparkles className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold">Upgrade to Premium</h3>
-            <p className="text-muted-foreground text-sm">
-              Unlock device routing, geotargeting, password gates, and remove
-              system limit boundaries.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button
-              onClick={() => {
-                setShowUpgradeModal(false);
-                router.push(`./billing`);
-              }}
-              className="w-full cursor-pointer"
-            >
-              Go to Billing
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowUpgradeModal(false)}
-              className="w-full cursor-pointer"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+        workspaceId={workspaceId}
+      />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { getLinks } from "@/actions/links";
 import { LinkCreator } from "@/components/link-creator";
 import { LinksTable } from "@/components/links-table";
 import { SeedButton } from "@/components/analytics/seed-button";
+import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { Layers } from "lucide-react";
 import { redirect } from "next/navigation";
 
@@ -54,11 +55,13 @@ export default async function LinksPage({
           </div>
         </div>
       ) : (
-        <LinksTable
-          workspaceId={currentWorkspace.id}
-          workspacePrefix={currentWorkspace.shortPrefix}
-          initialLinks={linksList}
-        />
+        <ComponentErrorBoundary>
+          <LinksTable
+            workspaceId={currentWorkspace.id}
+            workspacePrefix={currentWorkspace.shortPrefix}
+            initialLinks={linksList}
+          />
+        </ComponentErrorBoundary>
       )}
     </div>
   );

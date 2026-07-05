@@ -514,3 +514,45 @@ export async function deleteWorkspace(workspaceId: string) {
     return { success: false, error: "SERVER_ERROR" };
   }
 }
+
+export async function updateMemberRole(
+  workspaceId: string,
+  memberId: string,
+  newRole: "owner" | "admin" | "viewer"
+) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return { success: false, error: "UNAUTHORIZED" };
+    }
+
+    const [currentUserMember] = await db
+      .select()
+      .from(workspaceMembers)
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, workspaceId),
+          eq(workspaceMembers.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    if (!currentUserMember || currentUserMember.role !== "owner") {
+      return { success: false, error: "FORBIDDEN" };
+    }
+
+    await db
+      .update(workspaceMembers)
+      .set({ role: newRole })
+      .where(
+        and(
+          eq(workspaceMembers.id, memberId),
+          eq(workspaceMembers.workspaceId, workspaceId)
+        )
+      );
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "SERVER_ERROR" };
+  }
+}
