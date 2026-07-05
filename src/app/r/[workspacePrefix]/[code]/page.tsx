@@ -7,6 +7,7 @@ import { headers, cookies } from "next/headers";
 import { createHash } from "crypto";
 import { after } from "next/server";
 import { IS_DEMO_MODE } from "@/core/config";
+import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 
 export const dynamic = "force-dynamic";
 
@@ -88,16 +89,6 @@ export default async function RedirectPage({
     country = geoCountry;
   }
 
-  after(() => {
-    recordClick(link.id, {
-      country,
-      referrer,
-      device,
-      browser,
-      ipHash,
-    }).catch(() => {});
-  });
-
   let targetUrl = link.originalUrl;
 
   if (link.geoRouting && country !== "Unknown") {
@@ -114,6 +105,63 @@ export default async function RedirectPage({
   } else if (device === "Desktop" && link.desktopUrl) {
     targetUrl = link.desktopUrl;
   }
+
+  const botRegex =
+    /bot|crawl|spider|facebookexternalhit|twitterbot|slackbot|telegrambot|whatsapp|discordbot|linkedinbot/i;
+  const isBot = botRegex.test(userAgent);
+
+  if (isBot) {
+    const metadata = await scrapeUrlMetadata(
+      targetUrl,
+      link.title || "Secure Link"
+    );
+    return (
+      <html lang="en">
+        <head>
+          <meta charSet="utf-8" />
+          <title>{metadata.title}</title>
+          <meta name="description" content={metadata.description} />
+          <meta property="og:type" content="website" />
+          <meta property="og:title" content={metadata.title} />
+          <meta property="og:description" content={metadata.description} />
+          {metadata.image && (
+            <meta property="og:image" content={metadata.image} />
+          )}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={metadata.title} />
+          <meta name="twitter:description" content={metadata.description} />
+          {metadata.image && (
+            <meta name="twitter:image" content={metadata.image} />
+          )}
+          <meta httpEquiv="refresh" content={`0;url=${targetUrl}`} />
+        </head>
+        <body className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center p-4 text-center font-sans">
+          <div className="space-y-4">
+            <div className="border-primary mx-auto size-8 animate-spin rounded-full border-2 border-t-transparent" />
+            <p className="text-muted-foreground text-xs">
+              Redirecting to target secure destination safely...
+            </p>
+            <a
+              href={targetUrl}
+              className="text-primary font-mono text-xs underline"
+            >
+              {targetUrl}
+            </a>
+          </div>
+        </body>
+      </html>
+    );
+  }
+
+  after(() => {
+    recordClick(link.id, {
+      country,
+      referrer,
+      device,
+      browser,
+      ipHash,
+    }).catch(() => {});
+  });
 
   redirect(targetUrl);
 }
