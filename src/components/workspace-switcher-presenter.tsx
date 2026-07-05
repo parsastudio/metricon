@@ -5,13 +5,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronsUpDown, Plus, Building2 } from "lucide-react";
-
-interface Workspace {
-  id: string;
-  name: string;
-  slug: string;
-  plan: "free" | "pro";
-}
+import { Workspace } from "@/lib/validations";
 
 interface WorkspaceSwitcherPresenterProps {
   workspaces: Workspace[];

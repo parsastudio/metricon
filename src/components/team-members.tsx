@@ -13,24 +13,7 @@ import { User, Trash2, MailPlus, Shield, Hourglass, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { IS_DEMO_MODE } from "@/core/config";
-
-interface Member {
-  id: string;
-  role: "owner" | "admin" | "viewer";
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-    image: string | null;
-  };
-}
-
-interface PendingInvite {
-  id: string;
-  email: string;
-  role: "owner" | "admin" | "viewer";
-  expiresAt: Date;
-}
+import { Member, PendingInvite } from "@/lib/validations";
 
 interface TeamMembersProps {
   workspaceId: string;

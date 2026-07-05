@@ -6,22 +6,7 @@ import { LinksTable } from "./links-table";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Wifi, WifiOff } from "lucide-react";
 import { useOrigin } from "@/hooks/use-origin";
-
-interface LinkItem {
-  id: string;
-  workspaceId: string;
-  shortCode: string;
-  originalUrl: string;
-  title: string | null;
-  isActive: boolean;
-  password?: string | null;
-  expiresAt?: Date | null;
-  clicksCount: number;
-  iosUrl?: string | null;
-  androidUrl?: string | null;
-  desktopUrl?: string | null;
-  geoRouting?: Record<string, string> | null;
-}
+import { LinkItem } from "@/lib/validations";
 
 interface LinksManagerProps {
   workspaceId: string;

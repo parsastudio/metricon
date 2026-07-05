@@ -18,22 +18,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { LinkEditor } from "./link-editor";
 import { QrCodeDialog } from "./qr-code-dialog";
-
-interface LinkItem {
-  id: string;
-  workspaceId: string;
-  shortCode: string;
-  originalUrl: string;
-  title: string | null;
-  isActive: boolean;
-  password?: string | null;
-  expiresAt?: Date | null;
-  clicksCount: number;
-  iosUrl?: string | null;
-  androidUrl?: string | null;
-  desktopUrl?: string | null;
-  geoRouting?: Record<string, string> | null;
-}
+import { LinkItem } from "@/lib/validations";
 
 interface LinksTableProps {
   workspaceId: string;

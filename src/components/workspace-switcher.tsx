@@ -4,13 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { WorkspaceSwitcherPresenter } from "./workspace-switcher-presenter";
 import { toast } from "sonner";
-
-interface Workspace {
-  id: string;
-  name: string;
-  slug: string;
-  plan: "free" | "pro";
-}
+import { Workspace } from "@/lib/validations";
 
 interface WorkspaceSwitcherProps {
   workspaces: Workspace[];

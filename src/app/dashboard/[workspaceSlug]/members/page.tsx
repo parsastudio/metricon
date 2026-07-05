@@ -6,17 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { workspaceMembers } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
-
-interface FormattedMember {
-  id: string;
-  role: "owner" | "admin" | "viewer";
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-    image: string | null;
-  };
-}
+import { Member } from "@/lib/validations";
 
 export default async function MembersPage({
   params,
@@ -45,7 +35,7 @@ export default async function MembersPage({
   if (!userMemberRecord) redirect("/auth");
   const members = await getWorkspaceMembers(currentWorkspace.id);
 
-  const formattedMembers: FormattedMember[] = members.map((m) => ({
+  const formattedMembers: Member[] = members.map((m) => ({
     id: m.id,
     role: m.role as "owner" | "admin" | "viewer",
     user: {

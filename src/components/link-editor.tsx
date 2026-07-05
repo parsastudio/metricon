@@ -6,22 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { QuotaGatekeeper } from "@/components/quota-gatekeeper";
 import { Link2, Smartphone, Globe, Lock } from "lucide-react";
 import { toast } from "sonner";
-
-interface LinkItem {
-  id: string;
-  workspaceId: string;
-  shortCode: string;
-  originalUrl: string;
-  title: string | null;
-  isActive: boolean;
-  password?: string | null;
-  expiresAt?: Date | null;
-  clicksCount: number;
-  iosUrl?: string | null;
-  androidUrl?: string | null;
-  desktopUrl?: string | null;
-  geoRouting?: Record<string, string> | null;
-}
+import { LinkItem } from "@/lib/validations";
 
 interface LinkEditorProps {
   workspaceId: string;
@@ -29,7 +14,7 @@ interface LinkEditorProps {
   link: LinkItem;
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: (data: Record<string, any>) => Promise<void>;
+  onUpdate: (data: Record<string, unknown>) => Promise<void>;
 }
 
 export function LinkEditor({

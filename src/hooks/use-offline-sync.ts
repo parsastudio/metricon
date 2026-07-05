@@ -1,22 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { get, set, del } from "idb-keyval";
-
-interface OfflineLink {
-  id: string;
-  workspaceId: string;
-  shortCode: string;
-  originalUrl: string;
-  title: string | null;
-  isActive: boolean;
-  password?: string | null;
-  expiresAt?: Date | null;
-  clicksCount: number;
-  iosUrl?: string | null;
-  androidUrl?: string | null;
-  desktopUrl?: string | null;
-  geoRouting?: Record<string, string> | null;
-}
+import { LinkItem } from "@/lib/validations";
 
 interface PendingAction {
   id: string;
@@ -26,7 +11,7 @@ interface PendingAction {
 
 export function useOfflineSync(
   workspaceId: string,
-  initialLinks: OfflineLink[],
+  initialLinks: LinkItem[],
   actions: {
     onCreate: (
       data: Record<string, unknown>
@@ -41,7 +26,7 @@ export function useOfflineSync(
     ) => Promise<{ success: boolean; error?: string }>;
   }
 ) {
-  const [links, setLinks] = useState<OfflineLink[]>(initialLinks);
+  const [links, setLinks] = useState<LinkItem[]>(initialLinks);
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   const syncQueue = useCallback(async () => {
@@ -107,7 +92,7 @@ export function useOfflineSync(
   useEffect(() => {
     async function loadCache() {
       try {
-        const cached = await get<OfflineLink[]>(`links_cache_${workspaceId}`);
+        const cached = await get<LinkItem[]>(`links_cache_${workspaceId}`);
         if (cached) {
           setLinks(cached);
         } else {
@@ -134,7 +119,7 @@ export function useOfflineSync(
   const createLinkOffline = useCallback(
     async (data: Record<string, unknown>) => {
       const tempId = `optimistic-${crypto.randomUUID()}`;
-      const newLink: OfflineLink = {
+      const newLink: LinkItem = {
         id: tempId,
         workspaceId: workspaceId,
         shortCode: data.shortCode as string,
