@@ -10,16 +10,13 @@ export async function POST(req: Request) {
   const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
-
   if (!signature) {
     return new NextResponse("Invalid Signature Header", { status: 400 });
   }
-
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     return new NextResponse("Configuration Failure", { status: 500 });
   }
-
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
@@ -27,13 +24,11 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Unknown Error";
     return new NextResponse(`Verification Failed: ${message}`, { status: 400 });
   }
-
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const workspaceId = session.metadata?.workspaceId;
       const subscriptionId = session.subscription as string | null;
-
       if (workspaceId && subscriptionId) {
         await db.transaction(async (tx) => {
           await tx
@@ -48,11 +43,9 @@ export async function POST(req: Request) {
         });
       }
     }
-
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
       const subscriptionId = subscription.id;
-
       await db.transaction(async (tx) => {
         await tx
           .update(workspaces)
@@ -68,6 +61,5 @@ export async function POST(req: Request) {
   } catch {
     return new NextResponse("Database Sync Failed", { status: 500 });
   }
-
   return new NextResponse(null, { status: 200 });
 }

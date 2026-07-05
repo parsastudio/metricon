@@ -1,8 +1,7 @@
 import { getSessionUser } from "@/actions/auth";
 import { getWorkspaces } from "@/actions/workspace";
 import { getLinks, createLink } from "@/actions/links";
-import { LinkCreator } from "@/components/link-creator";
-import { LinksTable } from "@/components/links-table";
+import { LinksManager } from "@/components/links-manager";
 import { SeedButton } from "@/components/analytics/seed-button";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { Layers } from "lucide-react";
@@ -25,20 +24,6 @@ export default async function LinksPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Workspace Links</h2>
-          <p className="text-muted-foreground text-xs">
-            Manage your tracking, targeting & shortened codes.
-          </p>
-        </div>
-        <LinkCreator
-          workspaceId={currentWorkspace.id}
-          isPro={currentWorkspace.plan === "pro"}
-          onCreateLink={createLink}
-        />
-      </div>
-
       {linksList.length === 0 ? (
         <div className="bg-card border-border space-y-4 rounded-xl border p-12 text-center">
           <div className="bg-muted text-muted-foreground mx-auto flex size-12 items-center justify-center rounded-full">
@@ -57,11 +42,12 @@ export default async function LinksPage({
         </div>
       ) : (
         <ComponentErrorBoundary>
-          <LinksTable
+          <LinksManager
             workspaceId={currentWorkspace.id}
             workspacePrefix={currentWorkspace.shortPrefix}
             initialLinks={linksList}
             isPro={currentWorkspace.plan === "pro"}
+            onCreateLink={createLink}
           />
         </ComponentErrorBoundary>
       )}

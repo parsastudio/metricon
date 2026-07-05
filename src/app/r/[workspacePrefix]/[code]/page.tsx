@@ -8,6 +8,7 @@ import { after } from "next/server";
 import { IS_DEMO_MODE } from "@/core/config";
 import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
+import { resolveCountryFromIp } from "@/lib/geoip";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -97,21 +98,8 @@ export default async function RedirectPage({
     country = __country;
   } else if (geoCountry) {
     country = geoCountry;
-  } else if (rawIp && rawIp !== "127.0.0.1" && rawIp !== "::1") {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 400);
-      const res = await fetch(`https://ipapi.co/${rawIp}/country/`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.trim().length === 2) {
-          country = text.trim().toUpperCase();
-        }
-      }
-    } catch {}
+  } else {
+    country = await resolveCountryFromIp(rawIp);
   }
 
   let targetUrl = link.originalUrl;
