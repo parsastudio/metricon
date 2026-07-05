@@ -99,7 +99,6 @@ export async function createLink(data: {
       "dashboard",
       "auth",
       "static",
-      "b",
       "r",
       "links",
       "analytics",

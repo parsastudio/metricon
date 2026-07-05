@@ -1,71 +1,102 @@
-"use client";
+import { db } from "@/lib/db";
+import { links, workspaces } from "@/lib/schema";
+import { eq, and } from "drizzle-orm";
+import { recordClick } from "@/actions/analytics";
+import { redirect } from "next/navigation";
+import { headers, cookies } from "next/headers";
+import { createHash } from "crypto";
+import { after } from "next/server";
 
-import * as React from "react";
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
-import { toast } from "sonner";
-import { verifyLinkPassword } from "@/actions/links";
+export const dynamic = "force-dynamic";
 
-export default function ProtectedLinkPage() {
-  const params = useParams();
-  const workspacePrefix = params?.workspacePrefix as string;
-  const code = params?.code as string;
-  const [password, setPassword] = React.useState("");
-  const [pending, setPending] = React.useState(false);
+export default async function RedirectPage({
+  params,
+}: {
+  params: Promise<{ workspacePrefix: string; code: string }>;
+}) {
+  const { workspacePrefix, code } = await params;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPending(true);
-    try {
-      const res = await verifyLinkPassword(workspacePrefix, code, password);
-      if (res.success) {
-        window.location.href = `/r/${workspacePrefix}/${code}`;
-      } else {
-        toast.error(
-          res.error === "INCORRECT_PASSWORD"
-            ? "Incorrect password"
-            : "Authentication failed"
-        );
-      }
-    } catch {
-      toast.error("Authentication failed");
-    } finally {
-      setPending(false);
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.shortPrefix, workspacePrefix))
+    .limit(1);
+
+  if (!workspace) {
+    redirect("/expired");
+  }
+
+  const [link] = await db
+    .select()
+    .from(links)
+    .where(and(eq(links.workspaceId, workspace.id), eq(links.shortCode, code)))
+    .limit(1);
+
+  if (!link || !link.isActive) {
+    redirect("/expired");
+  }
+
+  if (link.expiresAt && new Date() > new Date(link.expiresAt)) {
+    redirect("/expired");
+  }
+
+  if (link.maxClicks && link.clicksCount >= link.maxClicks) {
+    redirect("/expired");
+  }
+
+  if (link.password) {
+    const cookieStore = await cookies();
+    const isUnlocked =
+      cookieStore.get(`link_unlocked_${workspacePrefix}_${code}`)?.value ===
+      "true";
+    if (!isUnlocked) {
+      redirect(`/r/${workspacePrefix}/${code}/protected`);
     }
-  };
+  }
 
-  return (
-    <div className="bg-background flex flex-1 items-center justify-center p-4">
-      <div className="border-border bg-card w-full max-w-sm space-y-6 rounded-2xl border p-6 text-center shadow-xl">
-        <div className="bg-primary/10 text-primary mx-auto flex size-11 items-center justify-center rounded-xl">
-          <Lock className="size-5" />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold">Encrypted Link</h2>
-          <p className="text-muted-foreground text-xs">
-            This target destination is protected by access codes.
-          </p>
-        </div>
+  const reqHeaders = await headers();
+  const userAgent = reqHeaders.get("user-agent") || "";
+  const referrer = reqHeaders.get("referer") || "Direct";
+  const rawIp = reqHeaders.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  const ipHash = createHash("sha256").update(rawIp).digest("hex");
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="password"
-            required
-            placeholder="Type password..."
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border-border focus:border-primary w-full rounded-md border bg-transparent px-3 py-1.5 text-center text-sm outline-hidden"
-          />
-          <Button
-            type="submit"
-            disabled={pending}
-            className="w-full cursor-pointer"
-          >
-            {pending ? "Unlocking..." : "Unlock Destination"}
-          </Button>
-        </form>
-      </div>
-    </div>
-  );
+  let device = "Desktop";
+  if (/mobile/i.test(userAgent)) device = "Mobile";
+  else if (/tablet/i.test(userAgent)) device = "Tablet";
+
+  let browser = "Unknown";
+  if (/chrome/i.test(userAgent)) browser = "Chrome";
+  else if (/safari/i.test(userAgent)) browser = "Safari";
+  else if (/firefox/i.test(userAgent)) browser = "Firefox";
+
+  let country = "Unknown";
+  const geoCountry = reqHeaders.get("x-vercel-ip-country");
+  if (geoCountry) country = geoCountry;
+
+  after(() => {
+    recordClick(link.id, {
+      country,
+      referrer,
+      device,
+      browser,
+      ipHash,
+    }).catch(() => {});
+  });
+
+  let targetUrl = link.originalUrl;
+
+  if (link.geoRouting && country !== "Unknown") {
+    const geoMatch = link.geoRouting[country.toUpperCase()];
+    if (geoMatch) targetUrl = geoMatch;
+  }
+
+  if (device === "Mobile") {
+    if (link.iosUrl && /iphone|ipad/i.test(userAgent)) {
+      targetUrl = link.iosUrl;
+    } else if (link.androidUrl && /android/i.test(userAgent)) {
+      targetUrl = link.androidUrl;
+    }
+  }
+
+  redirect(targetUrl);
 }
