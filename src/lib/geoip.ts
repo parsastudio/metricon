@@ -1,6 +1,12 @@
+const geoCache = new Map<string, string>();
+
 export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   if (!rawIp || rawIp === "127.0.0.1" || rawIp === "::1") {
     return "Unknown";
+  }
+
+  if (geoCache.has(rawIp)) {
+    return geoCache.get(rawIp)!;
   }
 
   const services = [
@@ -37,7 +43,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   ];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 1200);
+  const timeoutId = setTimeout(() => controller.abort(), 500);
 
   try {
     const country = await Promise.any(
@@ -45,6 +51,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
     );
     clearTimeout(timeoutId);
     if (country) {
+      geoCache.set(rawIp, country);
       return country;
     }
   } catch {

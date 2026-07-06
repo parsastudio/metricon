@@ -90,11 +90,15 @@ export async function sendWeeklyWorkspaceReport(workspaceId: string) {
     `;
 
     for (const m of members) {
-      await sendEmail({
+      const emailResult = await sendEmail({
         to: m.email,
         subject: `Metricon Digest: ${workspace.name}`,
         html,
       });
+
+      if (!emailResult.success) {
+        return { success: false, error: "EMAIL_DISPATCH_FAILURE" };
+      }
     }
 
     return { success: true };

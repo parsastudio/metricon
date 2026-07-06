@@ -70,8 +70,13 @@ export const createLinkSchema = z.object({
   shortCode: z
     .string()
     .min(1)
-    .max(30)
-    .regex(/^[a-zA-Z0-9-]+$/),
+    .max(50)
+    .transform((val) =>
+      val
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9-]/g, "")
+    ),
   title: z.string().optional(),
   password: z.string().optional(),
   expiresAt: z

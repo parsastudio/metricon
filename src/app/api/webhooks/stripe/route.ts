@@ -86,7 +86,8 @@ export async function POST(req: Request) {
           .where(eq(workspaces.stripeSubscriptionId, subscriptionId));
       });
     }
-  } catch {
+  } catch (err) {
+    console.error("Stripe webhook database synchronization failure:", err);
     return new NextResponse("Database Sync Failed", { status: 500 });
   }
   return new NextResponse(null, { status: 200 });

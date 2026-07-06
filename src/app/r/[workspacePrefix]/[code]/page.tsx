@@ -12,7 +12,6 @@ import { resolveCountryFromHeaders, getClientIp } from "@/lib/geoip";
 import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
 import { generateUnlockSignature } from "@/actions/links-security";
 
-export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 interface PageProps {

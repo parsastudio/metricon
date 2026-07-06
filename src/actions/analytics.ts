@@ -118,9 +118,20 @@ export async function getWorkspaceAnalytics(
     .sort((a, b) => b.value - a.value);
 
   const timeSeriesMap: Record<string, number> = {};
+
+  const iterDate = new Date(startDate);
+  const endIterDate = new Date(endDate);
+  while (iterDate <= endIterDate) {
+    const dateStr = iterDate.toISOString().split("T")[0];
+    timeSeriesMap[dateStr] = 0;
+    iterDate.setDate(iterDate.getDate() + 1);
+  }
+
   clicks.forEach((c) => {
     const dateStr = c.timestamp.toISOString().split("T")[0];
-    timeSeriesMap[dateStr] = (timeSeriesMap[dateStr] || 0) + 1;
+    if (dateStr in timeSeriesMap) {
+      timeSeriesMap[dateStr] += 1;
+    }
   });
 
   const timeSeries = Object.entries(timeSeriesMap)
@@ -183,38 +194,54 @@ export async function seedMockData(workspaceId: string) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner"]);
 
-    await db.delete(links).where(eq(links.workspaceId, workspaceId));
-
     const link1Id = crypto.randomUUID();
     const link2Id = crypto.randomUUID();
     const link3Id = crypto.randomUUID();
 
-    await db.insert(links).values([
-      {
+    const existing = await db
+      .select({ shortCode: links.shortCode })
+      .from(links)
+      .where(eq(links.workspaceId, workspaceId));
+
+    const existingCodes = new Set(existing.map((e) => e.shortCode));
+    const linksToInsert = [];
+
+    if (!existingCodes.has("launch-2026")) {
+      linksToInsert.push({
         id: link1Id,
         workspaceId,
         shortCode: "launch-2026",
         originalUrl: "https://github.com/metricon/launch",
         title: "Product Launch Campaign Page",
         clicksCount: 142,
-      },
-      {
+      });
+    }
+
+    if (!existingCodes.has("pricing-pro")) {
+      linksToInsert.push({
         id: link2Id,
         workspaceId,
         shortCode: "pricing-pro",
         originalUrl: "https://metricon.co/pricing",
         title: "Pro Subscription Checkout Page",
         clicksCount: 84,
-      },
-      {
+      });
+    }
+
+    if (!existingCodes.has("newsletter-sub")) {
+      linksToInsert.push({
         id: link3Id,
         workspaceId,
         shortCode: "newsletter-sub",
         originalUrl: "https://metricon.co/blog",
         title: "Newsletter Opt-in Success Page",
         clicksCount: 39,
-      },
-    ]);
+      });
+    }
+
+    if (linksToInsert.length > 0) {
+      await db.insert(links).values(linksToInsert);
+    }
 
     const countries = ["US", "GB", "DE", "FR", "JP", "CA", "AU"];
     const referrers = [
@@ -231,52 +258,60 @@ export async function seedMockData(workspaceId: string) {
     const clicksToInsert = [];
     const now = new Date();
 
-    for (let i = 0; i < 142; i++) {
-      const date = new Date();
-      date.setDate(now.getDate() - Math.floor(Math.random() * 30));
-      clicksToInsert.push({
-        id: crypto.randomUUID(),
-        linkId: link1Id,
-        timestamp: date,
-        country: countries[Math.floor(Math.random() * countries.length)],
-        referrer: referrers[Math.floor(Math.random() * referrers.length)],
-        device: devices[Math.floor(Math.random() * devices.length)],
-        browser: browsers[Math.floor(Math.random() * browsers.length)],
-        ipHash: crypto.randomUUID().substring(0, 32),
-      });
+    if (!existingCodes.has("launch-2026")) {
+      for (let i = 0; i < 142; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - Math.floor(Math.random() * 30));
+        clicksToInsert.push({
+          id: crypto.randomUUID(),
+          linkId: link1Id,
+          timestamp: date,
+          country: countries[Math.floor(Math.random() * countries.length)],
+          referrer: referrers[Math.floor(Math.random() * referrers.length)],
+          device: devices[Math.floor(Math.random() * devices.length)],
+          browser: browsers[Math.floor(Math.random() * browsers.length)],
+          ipHash: crypto.randomUUID().substring(0, 32),
+        });
+      }
     }
 
-    for (let i = 0; i < 84; i++) {
-      const date = new Date();
-      date.setDate(now.getDate() - Math.floor(Math.random() * 30));
-      clicksToInsert.push({
-        id: crypto.randomUUID(),
-        linkId: link2Id,
-        timestamp: date,
-        country: countries[Math.floor(Math.random() * countries.length)],
-        referrer: referrers[Math.floor(Math.random() * referrers.length)],
-        device: devices[Math.floor(Math.random() * devices.length)],
-        browser: browsers[Math.floor(Math.random() * browsers.length)],
-        ipHash: crypto.randomUUID().substring(0, 32),
-      });
+    if (!existingCodes.has("pricing-pro")) {
+      for (let i = 0; i < 84; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - Math.floor(Math.random() * 30));
+        clicksToInsert.push({
+          id: crypto.randomUUID(),
+          linkId: link2Id,
+          timestamp: date,
+          country: countries[Math.floor(Math.random() * countries.length)],
+          referrer: referrers[Math.floor(Math.random() * referrers.length)],
+          device: devices[Math.floor(Math.random() * devices.length)],
+          browser: browsers[Math.floor(Math.random() * browsers.length)],
+          ipHash: crypto.randomUUID().substring(0, 32),
+        });
+      }
     }
 
-    for (let i = 0; i < 39; i++) {
-      const date = new Date();
-      date.setDate(now.getDate() - Math.floor(Math.random() * 30));
-      clicksToInsert.push({
-        id: crypto.randomUUID(),
-        linkId: link3Id,
-        timestamp: date,
-        country: countries[Math.floor(Math.random() * countries.length)],
-        referrer: referrers[Math.floor(Math.random() * referrers.length)],
-        device: devices[Math.floor(Math.random() * devices.length)],
-        browser: browsers[Math.floor(Math.random() * browsers.length)],
-        ipHash: crypto.randomUUID().substring(0, 32),
-      });
+    if (!existingCodes.has("newsletter-sub")) {
+      for (let i = 0; i < 39; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - Math.floor(Math.random() * 30));
+        clicksToInsert.push({
+          id: crypto.randomUUID(),
+          linkId: link3Id,
+          timestamp: date,
+          country: countries[Math.floor(Math.random() * countries.length)],
+          referrer: referrers[Math.floor(Math.random() * referrers.length)],
+          device: devices[Math.floor(Math.random() * devices.length)],
+          browser: browsers[Math.floor(Math.random() * browsers.length)],
+          ipHash: crypto.randomUUID().substring(0, 32),
+        });
+      }
     }
 
-    await db.insert(analytics).values(clicksToInsert);
+    if (clicksToInsert.length > 0) {
+      await db.insert(analytics).values(clicksToInsert);
+    }
 
     return { success: true };
   } catch (error) {

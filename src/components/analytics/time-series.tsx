@@ -16,15 +16,16 @@ interface TimeSeriesProps {
 }
 
 export function TimeSeriesSkeleton() {
+  const heights = [40, 55, 30, 70, 50, 65, 45, 60, 35, 80, 55, 65];
   return (
     <div className="bg-card border-border h-[274px] animate-pulse space-y-4 rounded-xl border p-5">
       <div className="bg-muted/70 h-4 w-32 rounded" />
       <div className="flex h-48 w-full items-end justify-between gap-2 pt-4">
-        {[...Array(12)].map((_, i) => (
+        {heights.map((height, i) => (
           <div
             key={i}
             className="bg-muted/30 w-full rounded-t"
-            style={{ height: `${Math.random() * 60 + 20}%` }}
+            style={{ height: `${height}%` }}
           />
         ))}
       </div>

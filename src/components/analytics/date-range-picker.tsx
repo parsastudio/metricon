@@ -49,6 +49,14 @@ export function DateRangePicker() {
 
     setStart(startStr);
     setEnd(endStr);
+
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    params.delete("tf");
+    params.set("start", startStr);
+    params.set("end", endStr);
+
+    setIsOpen(false);
+    router.push(`?${params.toString()}`);
   };
 
   const daysInMonth = (year: number, month: number) => {

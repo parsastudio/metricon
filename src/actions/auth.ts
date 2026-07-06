@@ -13,7 +13,7 @@ import { loginSchema } from "@/lib/validations";
 import { IS_DEMO_MODE } from "@/core/config";
 import { sendEmail } from "@/lib/resend";
 import { getAppOrigin } from "@/lib/network";
-import { hashSha256 } from "@/lib/crypto";
+import { hashSha256, signSession, verifySession } from "@/lib/crypto";
 
 async function generateUniquePrefix(): Promise<string> {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -38,8 +38,13 @@ async function generateUniquePrefix(): Promise<string> {
 
 export async function getSessionUser() {
   const cookieStore = await cookies();
-  const userId = cookieStore.get("session_user_id")?.value;
+  const signedSession = cookieStore.get("session_user_id")?.value;
 
+  if (!signedSession) {
+    return null;
+  }
+
+  const userId = await verifySession(signedSession);
   if (!userId) {
     return null;
   }
@@ -135,7 +140,7 @@ export async function loginUser(email: string, name?: string) {
       defaultWorkspaceSlug = memberWorkspace?.slug || "default-org";
     }
 
-    cookieStore.set("session_user_id", existingUser.id, {
+    cookieStore.set("session_user_id", await signSession(existingUser.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -256,7 +261,7 @@ export async function verifyMagicToken(token: string) {
     .delete(verificationTokens)
     .where(eq(verificationTokens.id, tokenRecord.id));
 
-  cookieStore.set("session_user_id", existingUser.id, {
+  cookieStore.set("session_user_id", await signSession(existingUser.id), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
