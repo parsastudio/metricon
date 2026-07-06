@@ -1,4 +1,19 @@
+import fs from "fs";
+import path from "path";
+import * as mmdb from "mmdb-lib";
+
 const geoCache = new Map<string, string>();
+let reader: mmdb.Reader<any> | null = null;
+
+try {
+  const dbPath =
+    process.env.GEOIP_DB_PATH ||
+    path.join(process.cwd(), "GeoLite2-Country.mmdb");
+  if (fs.existsSync(dbPath)) {
+    const dbBuffer = fs.readFileSync(dbPath);
+    reader = new mmdb.Reader(dbBuffer);
+  }
+} catch {}
 
 export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   if (!rawIp || rawIp === "127.0.0.1" || rawIp === "::1") {
@@ -9,17 +24,35 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
     return geoCache.get(rawIp)!;
   }
 
+  if (reader) {
+    try {
+      const record = reader.get(rawIp);
+      const countryCode = record?.country?.iso_code || record?.country_code;
+      if (
+        countryCode &&
+        typeof countryCode === "string" &&
+        countryCode.length === 2
+      ) {
+        const result = countryCode.toUpperCase();
+        geoCache.set(rawIp, result);
+        return result;
+      }
+    } catch {}
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 350);
+
   const services = [
     async (ip: string, signal: AbortSignal) => {
       const res = await fetch(`https://ipapi.co/${ip}/country/`, { signal });
-      if (res.status === 429) throw new Error("RateLimit");
       if (res.ok) {
         const text = await res.text();
         if (text && text.trim().length === 2) {
           return text.trim().toUpperCase();
         }
       }
-      throw new Error("Failed");
+      throw new Error();
     },
     async (ip: string, signal: AbortSignal) => {
       const res = await fetch(`http://ip-api.com/json/${ip}`, { signal });
@@ -29,22 +62,9 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
           return data.countryCode.toUpperCase();
         }
       }
-      throw new Error("Failed");
-    },
-    async (ip: string, signal: AbortSignal) => {
-      const res = await fetch(`https://ipwho.is/${ip}`, { signal });
-      if (res.ok) {
-        const data = (await res.json()) as { country_code?: string };
-        if (data.country_code && data.country_code.length === 2) {
-          return data.country_code.toUpperCase();
-        }
-      }
-      throw new Error("Failed");
+      throw new Error();
     },
   ];
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 1800);
 
   try {
     const country = await Promise.any(

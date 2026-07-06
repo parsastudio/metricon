@@ -85,7 +85,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "INVALID_JSON_BODY" }, { status: 400 });
+    }
+
     const validated = createLinkSchema.parse(body);
 
     const [workspace] = await db

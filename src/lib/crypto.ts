@@ -19,6 +19,17 @@ export async function signSession(userId: string): Promise<string> {
   return `${userId}.${signature}`;
 }
 
+export function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 export async function verifySession(
   signedValue: string
 ): Promise<string | null> {
@@ -30,7 +41,7 @@ export async function verifySession(
     process.env.STRIPE_SECRET_KEY ||
     "default-session-salt-secret-2026";
   const expectedSignature = await hashSha256(`${userId}:${secret}`);
-  if (signature === expectedSignature) {
+  if (timingSafeEqual(signature, expectedSignature)) {
     return userId;
   }
   return null;

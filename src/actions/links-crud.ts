@@ -6,6 +6,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 import { revalidateTag } from "next/cache";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
+import { ZodError } from "zod";
 
 export async function getLinks(workspaceId: string) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
@@ -128,6 +129,12 @@ export async function createLink(data: {
     revalidateTag(`link-${validated.workspaceId}-${cleanShortCode}`, "max");
     return { success: true, linkId };
   } catch (error) {
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        error: error.errors[0]?.message || "INVALID_FIELDS",
+      };
+    }
     if (
       error instanceof Error &&
       (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
@@ -188,6 +195,12 @@ export async function updateLink(data: {
     revalidateTag(`link-${validated.workspaceId}-${link.shortCode}`, "max");
     return { success: true };
   } catch (error) {
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        error: error.errors[0]?.message || "INVALID_FIELDS",
+      };
+    }
     if (
       error instanceof Error &&
       (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
