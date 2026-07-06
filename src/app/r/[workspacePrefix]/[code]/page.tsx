@@ -93,22 +93,26 @@ export default async function RedirectPage({
   }
 
   let targetUrl = link.originalUrl;
+  let hasGeoMatch = false;
 
   if (link.geoRouting && country !== "Unknown") {
     const geoMatch = link.geoRouting[country.toUpperCase()];
     if (geoMatch) {
       targetUrl = geoMatch;
+      hasGeoMatch = true;
     }
   }
 
-  if (device === "Mobile") {
-    if (link.iosUrl && /iphone|ipad/i.test(userAgent)) {
-      targetUrl = link.iosUrl;
-    } else if (link.androidUrl && /android/i.test(userAgent)) {
-      targetUrl = link.androidUrl;
+  if (!hasGeoMatch) {
+    if (device === "Mobile") {
+      if (link.iosUrl && /iphone|ipad/i.test(userAgent)) {
+        targetUrl = link.iosUrl;
+      } else if (link.androidUrl && /android/i.test(userAgent)) {
+        targetUrl = link.androidUrl;
+      }
+    } else if (device === "Desktop" && link.desktopUrl) {
+      targetUrl = link.desktopUrl;
     }
-  } else if (device === "Desktop" && link.desktopUrl) {
-    targetUrl = link.desktopUrl;
   }
 
   const botRegex =

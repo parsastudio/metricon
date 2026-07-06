@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { get, set, del } from "idb-keyval";
@@ -15,7 +17,7 @@ export function useOfflineQueue(
   actions: {
     onCreate: (
       data: Record<string, unknown>
-    ) => Promise<{ success: boolean; error?: string }>;
+    ) => Promise<{ success: boolean; error?: string; linkId?: string }>;
     onUpdate: (
       data: Record<string, unknown>
     ) => Promise<{ success: boolean; error?: string }>;
@@ -45,9 +47,25 @@ export function useOfflineQueue(
 
         for (const action of queue) {
           try {
-            let res: { success: boolean; error?: string } = { success: false };
+            let res: { success: boolean; error?: string; linkId?: string } = {
+              success: false,
+            };
             if (action.type === "CREATE") {
               res = await actions.onCreate(action.payload);
+              if (res.success && res.linkId) {
+                const tempShortCode = action.payload.shortCode as string;
+                const realId = res.linkId;
+                setLinks((prev) => {
+                  const next = prev.map((l) =>
+                    l.id.startsWith("optimistic-") &&
+                    l.shortCode === tempShortCode
+                      ? { ...l, id: realId }
+                      : l
+                  );
+                  set(`links_cache_${workspaceId}`, next).catch(() => {});
+                  return next;
+                });
+              }
             } else if (action.type === "UPDATE") {
               res = await actions.onUpdate(action.payload);
             } else if (action.type === "DELETE") {

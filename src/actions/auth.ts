@@ -162,7 +162,7 @@ export async function loginUser(email: string, name?: string) {
     const appUrl = await getAppOrigin();
     const verificationUrl = `${appUrl}/auth/callback?token=${token}`;
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: cleanEmail,
       subject: "Access Your Metricon Account",
       html: `<div style="font-family: sans-serif; padding: 20px;">
@@ -172,6 +172,10 @@ export async function loginUser(email: string, name?: string) {
         <p style="color: #666; font-size: 12px; margin-top: 20px;">This security link is valid for 10 minutes.</p>
       </div>`,
     });
+
+    if (!emailResult.success) {
+      return { success: false, error: "EMAIL_DISPATCH_FAILURE" };
+    }
 
     return { success: true, isDemo: false };
   }

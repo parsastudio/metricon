@@ -54,6 +54,29 @@ function isSafeUrl(urlString: string): boolean {
   }
 }
 
+function extractMetaContent(html: string, attributeValue: string): string {
+  const propertyRegex = new RegExp(
+    `<meta[^>]*(?:property|name)=["']${attributeValue}["'][^>]*content=["']([^"']*)["']`,
+    "i"
+  );
+  const contentFirstRegex = new RegExp(
+    `<meta[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']${attributeValue}["']`,
+    "i"
+  );
+
+  const matchPropertyFirst = html.match(propertyRegex);
+  if (matchPropertyFirst) {
+    return matchPropertyFirst[1].trim();
+  }
+
+  const matchContentFirst = html.match(contentFirstRegex);
+  if (matchContentFirst) {
+    return matchContentFirst[1].trim();
+  }
+
+  return "";
+}
+
 export async function scrapeUrlMetadata(
   url: string,
   fallbackTitle: string
@@ -89,21 +112,12 @@ export async function scrapeUrlMetadata(
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : defaultMetadata.title;
 
-    const ogDescMatch =
-      html.match(
-        /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i
-      ) ||
-      html.match(
-        /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i
-      );
-    const description = ogDescMatch
-      ? ogDescMatch[1].trim()
-      : defaultMetadata.description;
+    const description =
+      extractMetaContent(html, "og:description") ||
+      extractMetaContent(html, "description") ||
+      defaultMetadata.description;
 
-    const ogImgMatch = html.match(
-      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
-    );
-    const image = ogImgMatch ? ogImgMatch[1].trim() : "";
+    const image = extractMetaContent(html, "og:image");
 
     return { title, description, image };
   } catch {

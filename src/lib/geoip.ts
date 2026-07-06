@@ -22,7 +22,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
       throw new Error("Failed");
     },
     async (ip: string, signal: AbortSignal) => {
-      const res = await fetch(`https://ip-api.com/json/${ip}`, { signal });
+      const res = await fetch(`http://ip-api.com/json/${ip}`, { signal });
       if (res.ok) {
         const data = (await res.json()) as { countryCode?: string };
         if (data.countryCode && data.countryCode.length === 2) {
@@ -44,7 +44,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   ];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 600);
+  const timeoutId = setTimeout(() => controller.abort(), 1800);
 
   try {
     const country = await Promise.any(

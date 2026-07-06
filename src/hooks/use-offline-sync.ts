@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useCallback } from "react";
 import { set, get } from "idb-keyval";
 import { LinkItem } from "@/lib/validations";
@@ -15,7 +17,7 @@ export function useOfflineSync(
   actions: {
     onCreate: (
       data: Record<string, unknown>
-    ) => Promise<{ success: boolean; error?: string }>;
+    ) => Promise<{ success: boolean; error?: string; linkId?: string }>;
     onUpdate: (
       data: Record<string, unknown>
     ) => Promise<{ success: boolean; error?: string }>;
@@ -89,6 +91,16 @@ export function useOfflineSync(
         try {
           const res = await actions.onCreate(data);
           if (!res.success) throw new Error();
+          if (res.success && res.linkId) {
+            const realId = res.linkId;
+            setLinks((prev) => {
+              const next = prev.map((l) =>
+                l.id === tempId ? { ...l, id: realId } : l
+              );
+              set(`links_cache_${workspaceId}`, next).catch(() => {});
+              return next;
+            });
+          }
         } catch {
           await queueAction(action);
         }
