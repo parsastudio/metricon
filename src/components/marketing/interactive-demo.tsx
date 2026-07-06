@@ -12,6 +12,7 @@ import {
   BarChart3,
   RotateCcw,
 } from "lucide-react";
+import { createLandingDemoLink } from "@/actions/landing-demo";
 
 export function InteractiveDemo() {
   const [url, setUrl] = React.useState("");
@@ -23,6 +24,8 @@ export function InteractiveDemo() {
   const [simulatedClicks, setSimulatedClicks] = React.useState(142);
   const [loading, setLoading] = React.useState(false);
   const [origin, setOrigin] = React.useState("");
+  const [shortCode, setShortCode] = React.useState("promo");
+  const [workspacePrefix, setWorkspacePrefix] = React.useState("premium");
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -42,18 +45,30 @@ export function InteractiveDemo() {
     return () => clearInterval(interval);
   }, [isShortened]);
 
-  const handleShorten = (e: React.FormEvent) => {
+  const handleShorten = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await createLandingDemoLink(url);
+      if (res.success && res.shortCode) {
+        setWorkspacePrefix("demo");
+        setShortCode(res.shortCode);
+      } else {
+        setWorkspacePrefix("premium");
+        setShortCode("promo");
+      }
+    } catch {
+      setWorkspacePrefix("premium");
+      setShortCode("promo");
+    } finally {
       setLoading(false);
       setIsShortened(true);
-    }, 1200);
+    }
   };
 
   const handleCopy = () => {
-    const absoluteShortLink = `${origin || "https://metricon.co"}/r/premium/promo`;
+    const absoluteShortLink = `${origin || "https://metricon.co"}/r/${workspacePrefix}/${shortCode}`;
     navigator.clipboard.writeText(absoluteShortLink);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -63,6 +78,8 @@ export function InteractiveDemo() {
     setUrl("");
     setIsShortened(false);
     setSimulatedClicks(142);
+    setShortCode("promo");
+    setWorkspacePrefix("premium");
   };
 
   return (
@@ -141,7 +158,7 @@ export function InteractiveDemo() {
                   Generated Link
                 </span>
                 <div className="text-primary font-mono text-sm font-semibold">
-                  {cleanOrigin}/r/premium/promo
+                  {cleanOrigin}/r/{workspacePrefix}/{shortCode}
                 </div>
               </div>
               <div className="flex gap-2">

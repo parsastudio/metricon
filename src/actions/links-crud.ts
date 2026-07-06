@@ -142,7 +142,7 @@ export async function createLink(data: {
     if (error instanceof ZodError) {
       return {
         success: false,
-        error: error.errors[0]?.message || "INVALID_FIELDS",
+        error: error.issues[0]?.message || "INVALID_FIELDS",
       };
     }
     if (
@@ -217,7 +217,7 @@ export async function updateLink(data: {
     if (error instanceof ZodError) {
       return {
         success: false,
-        error: error.errors[0]?.message || "INVALID_FIELDS",
+        error: error.issues[0]?.message || "INVALID_FIELDS",
       };
     }
     if (
