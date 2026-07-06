@@ -126,7 +126,7 @@ export async function createLink(data: {
     });
 
     revalidateTag(`link-${validated.workspaceId}-${cleanShortCode}`, "max");
-    return { success: true };
+    return { success: true, linkId };
   } catch (error) {
     if (
       error instanceof Error &&

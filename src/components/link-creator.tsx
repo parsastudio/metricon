@@ -23,7 +23,7 @@ interface LinkCreatorProps {
     androidUrl?: string;
     desktopUrl?: string;
     geoRouting?: Record<string, string>;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; linkId?: string }>;
 }
 
 export function LinkCreator({

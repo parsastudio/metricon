@@ -30,7 +30,13 @@ function AcceptInvitationContent() {
         toast.success("Successfully joined the workspace!");
       } else {
         setStatus("error");
-        toast.error("Invalid or expired invitation token.");
+        if (res.error === "EMAIL_MISMATCH") {
+          toast.error("Logged-in email does not match invitation email");
+        } else if (res.error === "UNAUTHORIZED") {
+          toast.error("Please log in first to accept this invitation");
+        } else {
+          toast.error("Invalid or expired invitation token.");
+        }
       }
     } catch {
       setStatus("error");

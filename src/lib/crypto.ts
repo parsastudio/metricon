@@ -12,7 +12,9 @@ export async function getSaltedIpHash(ip: string): Promise<string> {
 
 export async function signSession(userId: string): Promise<string> {
   const secret =
-    process.env.STRIPE_SECRET_KEY || "default-session-salt-secret-2026";
+    process.env.SESSION_SECRET ||
+    process.env.STRIPE_SECRET_KEY ||
+    "default-session-salt-secret-2026";
   const signature = await hashSha256(`${userId}:${secret}`);
   return `${userId}.${signature}`;
 }
@@ -24,7 +26,9 @@ export async function verifySession(
   if (parts.length !== 2) return null;
   const [userId, signature] = parts;
   const secret =
-    process.env.STRIPE_SECRET_KEY || "default-session-salt-secret-2026";
+    process.env.SESSION_SECRET ||
+    process.env.STRIPE_SECRET_KEY ||
+    "default-session-salt-secret-2026";
   const expectedSignature = await hashSha256(`${userId}:${secret}`);
   if (signature === expectedSignature) {
     return userId;

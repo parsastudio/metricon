@@ -89,16 +89,22 @@ export async function sendWeeklyWorkspaceReport(workspaceId: string) {
       </div>
     `;
 
-    for (const m of members) {
-      const emailResult = await sendEmail({
-        to: m.email,
-        subject: `Metricon Digest: ${workspace.name}`,
-        html,
-      });
+    const results = await Promise.allSettled(
+      members.map((m) =>
+        sendEmail({
+          to: m.email,
+          subject: `Metricon Digest: ${workspace.name}`,
+          html,
+        })
+      )
+    );
 
-      if (!emailResult.success) {
-        return { success: false, error: "EMAIL_DISPATCH_FAILURE" };
-      }
+    const hasSuccessfulDispatch = results.some(
+      (r) => r.status === "fulfilled" && r.value.success
+    );
+
+    if (!hasSuccessfulDispatch && members.length > 0) {
+      return { success: false, error: "EMAIL_DISPATCH_FAILURE" };
     }
 
     return { success: true };

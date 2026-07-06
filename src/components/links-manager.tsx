@@ -25,7 +25,7 @@ interface LinksManagerProps {
     androidUrl?: string;
     desktopUrl?: string;
     geoRouting?: Record<string, string>;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; linkId?: string }>;
   onUpdateLink: (
     data: Record<string, unknown>
   ) => Promise<{ success: boolean; error?: string }>;

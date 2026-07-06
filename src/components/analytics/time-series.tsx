@@ -81,7 +81,9 @@ export function TimeSeries({ data }: TimeSeriesProps) {
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value: string) => value.slice(5)}
+                tickFormatter={(value: string) =>
+                  value && typeof value === "string" ? value.slice(5) : ""
+                }
                 className="fill-muted-foreground text-[10px]"
               />
               <YAxis

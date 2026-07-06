@@ -81,38 +81,30 @@ export async function verifyLinkPassword(
 
     if (link.password !== passwordEntered) {
       const attempts = baseAttempts + 1;
+      const lockedUntil =
+        attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
 
-      if (attempts >= 5) {
-        const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
-        if (existingRecord) {
-          await db
-            .update(failedAttempts)
-            .set({ attempts, lockedUntil, updatedAt: new Date() })
-            .where(eq(failedAttempts.id, existingRecord.id));
-        } else {
-          await db.insert(failedAttempts).values({
-            id: crypto.randomUUID(),
-            ipHash,
-            linkId: link.id,
+      await db
+        .insert(failedAttempts)
+        .values({
+          id: crypto.randomUUID(),
+          ipHash,
+          linkId: link.id,
+          attempts,
+          lockedUntil,
+        })
+        .onConflictDoUpdate({
+          target: [failedAttempts.ipHash, failedAttempts.linkId],
+          set: {
             attempts,
             lockedUntil,
-          });
-        }
+            updatedAt: new Date(),
+          },
+        });
+
+      if (attempts >= 5) {
         return { success: false, error: "INCORRECT_PASSWORD_LOCKED" };
       } else {
-        if (existingRecord) {
-          await db
-            .update(failedAttempts)
-            .set({ attempts, lockedUntil: null, updatedAt: new Date() })
-            .where(eq(failedAttempts.id, existingRecord.id));
-        } else {
-          await db.insert(failedAttempts).values({
-            id: crypto.randomUUID(),
-            ipHash,
-            linkId: link.id,
-            attempts,
-          });
-        }
         return { success: false, error: "INCORRECT_PASSWORD" };
       }
     }

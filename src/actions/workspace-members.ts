@@ -13,6 +13,7 @@ import { inviteMemberSchema } from "@/lib/validations";
 import { IS_DEMO_MODE } from "@/core/config";
 import { sendEmail } from "@/lib/resend";
 import { getAppOrigin } from "@/lib/network";
+import { getSessionUser } from "@/actions/auth";
 
 export async function getWorkspaceMembers(workspaceId: string) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
@@ -161,6 +162,11 @@ export async function inviteMember(
 }
 
 export async function acceptWorkspaceInvitation(token: string) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
   const [invitation] = await db
     .select()
     .from(workspaceInvitations)
@@ -174,6 +180,10 @@ export async function acceptWorkspaceInvitation(token: string) {
 
   if (!invitation) {
     return { success: false, error: "INVALID_OR_EXPIRED" };
+  }
+
+  if (sessionUser.email !== invitation.email) {
+    return { success: false, error: "EMAIL_MISMATCH" };
   }
 
   let [targetUser] = await db
