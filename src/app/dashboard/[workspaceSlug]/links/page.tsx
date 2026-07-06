@@ -28,6 +28,12 @@ export default async function LinksPage({
 
   const linksList = await getLinks(currentWorkspace.id);
 
+  const boundDeleteLink = deleteLink.bind(null, currentWorkspace.id);
+  const boundToggleActive = toggleLinkActiveStatus.bind(
+    null,
+    currentWorkspace.id
+  );
+
   return (
     <div className="space-y-6">
       {linksList.length === 0 ? (
@@ -54,43 +60,13 @@ export default async function LinksPage({
             initialLinks={linksList}
             isPro={currentWorkspace.plan === "pro"}
             onCreateLink={createLink}
-            onUpdateLink={async (data) => {
-              "use server";
-              return updateLink({
-                linkId: String(data.linkId),
-                workspaceId: String(data.workspaceId),
-                originalUrl: String(data.originalUrl),
-                title: data.title ? String(data.title) : undefined,
-                password: data.password ? String(data.password) : undefined,
-                expiresAt: data.expiresAt ? String(data.expiresAt) : undefined,
-                maxClicks:
-                  typeof data.maxClicks === "number"
-                    ? data.maxClicks
-                    : undefined,
-                iosUrl: data.iosUrl ? String(data.iosUrl) : undefined,
-                androidUrl: data.androidUrl
-                  ? String(data.androidUrl)
-                  : undefined,
-                desktopUrl: data.desktopUrl
-                  ? String(data.desktopUrl)
-                  : undefined,
-                geoRouting: data.geoRouting
-                  ? (data.geoRouting as Record<string, string>)
-                  : undefined,
-              });
-            }}
-            onDeleteLink={async (linkId) => {
-              "use server";
-              return deleteLink(currentWorkspace.id, linkId);
-            }}
-            onToggleActive={async (linkId, isActive) => {
-              "use server";
-              return toggleLinkActiveStatus(
-                currentWorkspace.id,
-                linkId,
-                isActive
-              );
-            }}
+            onUpdateLink={
+              updateLink as (
+                data: Record<string, unknown>
+              ) => Promise<{ success: boolean; error?: string }>
+            }
+            onDeleteLink={boundDeleteLink}
+            onToggleActive={boundToggleActive}
           />
         </ComponentErrorBoundary>
       )}

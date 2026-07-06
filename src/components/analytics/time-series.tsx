@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   AreaChart,
   Area,
@@ -32,6 +33,16 @@ export function TimeSeriesSkeleton() {
 }
 
 export function TimeSeries({ data }: TimeSeriesProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <TimeSeriesSkeleton />;
+  }
+
   return (
     <div className="bg-card border-border space-y-4 rounded-xl border p-5">
       <h3 className="text-sm font-semibold">Clicks Over Time</h3>

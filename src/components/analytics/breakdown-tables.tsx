@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Globe, HardDrive, Compass } from "lucide-react";
 import { DeviceDonut } from "./device-donut";
 
@@ -58,6 +59,16 @@ export function BreakdownTables({
   referrers,
   devices,
 }: BreakdownTablesProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <BreakdownTablesSkeleton />;
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <div className="bg-card border-border space-y-3 rounded-xl border p-5">
