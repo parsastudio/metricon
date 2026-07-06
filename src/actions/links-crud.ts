@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { links, workspaces, analytics } from "@/lib/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { links, workspaces } from "@/lib/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 import { revalidateTag } from "next/cache";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";

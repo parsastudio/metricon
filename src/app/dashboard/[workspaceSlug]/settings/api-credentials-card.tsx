@@ -26,15 +26,20 @@ export function ApiCredentialsCard({
   origin,
 }: ApiCredentialsProps) {
   const [showKey, setShowKey] = React.useState(false);
-  const [apiKey, setApiKey] = React.useState(initialApiKey);
+  const [apiKey, setApiKey] = React.useState("");
+  const [hasNewKey, setHasNewKey] = React.useState(false);
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
 
+  const displayKey = hasNewKey
+    ? apiKey
+    : "mc_live_••••••••••••••••••••••••••••••••";
+
   const listUrl = `curl -X GET "${origin}/api/v1/links?workspaceId=${workspaceId}" \\
-  -H "Authorization: Bearer ${apiKey}"`;
+  -H "Authorization: Bearer ${hasNewKey ? apiKey : "YOUR_API_KEY"}"`;
 
   const createUrl = `curl -X POST "${origin}/api/v1/links" \\
-  -H "Authorization: Bearer ${apiKey}" \\
+  -H "Authorization: Bearer ${hasNewKey ? apiKey : "YOUR_API_KEY"}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "workspaceId": "${workspaceId}",
@@ -43,6 +48,10 @@ export function ApiCredentialsCard({
   }'`;
 
   const copyToClipboard = (text: string, id: string) => {
+    if (id === "token" && !hasNewKey) {
+      toast.error("Please rotate your API key first to copy the raw token.");
+      return;
+    }
     navigator.clipboard.writeText(text);
     setCopiedCode(id);
     toast.success("Copied to clipboard successfully");
@@ -55,7 +64,11 @@ export function ApiCredentialsCard({
       const res = await rotateApiKey();
       if (res.success && res.apiKey) {
         setApiKey(res.apiKey);
-        toast.success("API key successfully regenerated!");
+        setHasNewKey(true);
+        setShowKey(true);
+        toast.success(
+          "API key successfully regenerated! Make sure to copy it now."
+        );
       }
     } catch {
       toast.error("Failed to regenerate API credentials.");
@@ -88,7 +101,7 @@ export function ApiCredentialsCard({
               Bearer Secret:
             </span>
             <span className="font-mono font-bold">
-              {showKey ? apiKey : "••••••••••••••••••••••••••••••••"}
+              {showKey ? displayKey : "••••••••••••••••••••••••••••••••"}
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -102,7 +115,7 @@ export function ApiCredentialsCard({
                 )}
               </button>
               <button
-                onClick={() => copyToClipboard(apiKey, "token")}
+                onClick={() => copyToClipboard(displayKey, "token")}
                 className="text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 {copiedCode === "token" ? (
