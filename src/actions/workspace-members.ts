@@ -74,6 +74,7 @@ export async function inviteMember(
           email: cleanEmail,
           name: cleanEmail.split("@")[0],
           image: null,
+          apiKey: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -193,6 +194,7 @@ export async function acceptWorkspaceInvitation(token: string) {
       email: invitation.email,
       name: invitation.email.split("@")[0],
       image: null,
+      apiKey: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

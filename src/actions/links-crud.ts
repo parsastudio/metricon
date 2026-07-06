@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { links, workspaces, analytics } from "@/lib/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
-import { revalidateTag } from "next/headers";
+import { revalidateTag } from "next/cache";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 
 export async function getLinks(workspaceId: string) {
@@ -125,7 +125,7 @@ export async function createLink(data: {
       clicksCount: 0,
     });
 
-    revalidateTag(`link-${validated.workspaceId}-${cleanShortCode}`);
+    revalidateTag(`link-${validated.workspaceId}-${cleanShortCode}`, "max");
     return { success: true };
   } catch (error) {
     if (
@@ -185,7 +185,7 @@ export async function updateLink(data: {
       })
       .where(eq(links.id, validated.linkId));
 
-    revalidateTag(`link-${validated.workspaceId}-${link.shortCode}`);
+    revalidateTag(`link-${validated.workspaceId}-${link.shortCode}`, "max");
     return { success: true };
   } catch (error) {
     if (
@@ -217,7 +217,7 @@ export async function toggleLinkActiveStatus(
         .set({ isActive, updatedAt: new Date() })
         .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
 
-      revalidateTag(`link-${workspaceId}-${link.shortCode}`);
+      revalidateTag(`link-${workspaceId}-${link.shortCode}`, "max");
     }
     return { success: true };
   } catch (error) {
@@ -245,7 +245,7 @@ export async function deleteLink(workspaceId: string, linkId: string) {
         .delete(links)
         .where(and(eq(links.id, linkId), eq(links.workspaceId, workspaceId)));
 
-      revalidateTag(`link-${workspaceId}-${link.shortCode}`);
+      revalidateTag(`link-${workspaceId}-${link.shortCode}`, "max");
     }
     return { success: true };
   } catch (error) {

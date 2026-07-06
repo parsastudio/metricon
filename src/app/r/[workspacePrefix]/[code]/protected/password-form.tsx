@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { verifyLinkPassword } from "@/actions/links";
+import { verifyLinkPassword } from "@/actions/links-security";
 import { Button } from "@/components/ui/button";
 import { Lock, ArrowRight, ShieldAlert, KeyRound } from "lucide-react";
 import { motion } from "framer-motion";

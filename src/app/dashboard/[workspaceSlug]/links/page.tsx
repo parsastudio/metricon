@@ -54,7 +54,31 @@ export default async function LinksPage({
             initialLinks={linksList}
             isPro={currentWorkspace.plan === "pro"}
             onCreateLink={createLink}
-            onUpdateLink={updateLink}
+            onUpdateLink={async (data) => {
+              "use server";
+              return updateLink({
+                linkId: String(data.linkId),
+                workspaceId: String(data.workspaceId),
+                originalUrl: String(data.originalUrl),
+                title: data.title ? String(data.title) : undefined,
+                password: data.password ? String(data.password) : undefined,
+                expiresAt: data.expiresAt ? String(data.expiresAt) : undefined,
+                maxClicks:
+                  typeof data.maxClicks === "number"
+                    ? data.maxClicks
+                    : undefined,
+                iosUrl: data.iosUrl ? String(data.iosUrl) : undefined,
+                androidUrl: data.androidUrl
+                  ? String(data.androidUrl)
+                  : undefined,
+                desktopUrl: data.desktopUrl
+                  ? String(data.desktopUrl)
+                  : undefined,
+                geoRouting: data.geoRouting
+                  ? (data.geoRouting as Record<string, string>)
+                  : undefined,
+              });
+            }}
             onDeleteLink={async (linkId) => {
               "use server";
               return deleteLink(currentWorkspace.id, linkId);
