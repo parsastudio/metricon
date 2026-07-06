@@ -44,8 +44,17 @@ export function DateRangePicker() {
     const startDateObj = new Date();
     startDateObj.setDate(endDateObj.getDate() - days);
 
-    const startStr = startDateObj.toISOString().split("T")[0];
-    const endStr = endDateObj.toISOString().split("T")[0];
+    const startYear = startDateObj.getFullYear().toString();
+    const startMonth = (startDateObj.getMonth() + 1)
+      .toString()
+      .padStart(2, "0");
+    const startDay = startDateObj.getDate().toString().padStart(2, "0");
+    const startStr = `${startYear}-${startMonth}-${startDay}`;
+
+    const endYear = endDateObj.getFullYear().toString();
+    const endMonth = (endDateObj.getMonth() + 1).toString().padStart(2, "0");
+    const endDay = endDateObj.getDate().toString().padStart(2, "0");
+    const endStr = `${endYear}-${endMonth}-${endDay}`;
 
     setStart(startStr);
     setEnd(endStr);
@@ -68,8 +77,10 @@ export function DateRangePicker() {
   };
 
   const handleDateClick = (day: number) => {
-    const dateObj = new Date(currentYear, currentMonth, day + 1);
-    const dateString = dateObj.toISOString().split("T")[0];
+    const yearStr = currentYear.toString();
+    const monthStr = (currentMonth + 1).toString().padStart(2, "0");
+    const dayStr = day.toString().padStart(2, "0");
+    const dateString = `${yearStr}-${monthStr}-${dayStr}`;
 
     if (!start || (start && end)) {
       setStart(dateString);
@@ -192,12 +203,10 @@ export function DateRangePicker() {
                 }
 
                 const day = index - offset + 1;
-                const cellDateObj = new Date(
-                  currentYear,
-                  currentMonth,
-                  day + 1
-                );
-                const cellDateStr = cellDateObj.toISOString().split("T")[0];
+                const yearStr = currentYear.toString();
+                const monthStr = (currentMonth + 1).toString().padStart(2, "0");
+                const dayStr = day.toString().padStart(2, "0");
+                const cellDateStr = `${yearStr}-${monthStr}-${dayStr}`;
 
                 const isSelectedStart = start === cellDateStr;
                 const isSelectedEnd = end === cellDateStr;

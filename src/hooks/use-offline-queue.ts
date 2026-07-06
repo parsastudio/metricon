@@ -29,71 +29,79 @@ export function useOfflineQueue(
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   const syncQueue = useCallback(async () => {
-    try {
-      const queue = await get<PendingAction[]>(`sync_queue_${workspaceId}`);
-      if (!queue || queue.length === 0) return;
-      const remainingQueue: PendingAction[] = [];
-      const unrecoverableErrors = [
-        "LIMIT_REACHED",
-        "SHORT_CODE_EXISTS",
-        "FORBIDDEN",
-        "RESERVED_SHORT_CODE",
-        "LINK_NOT_FOUND",
-        "WORKSPACE_NOT_FOUND",
-      ];
+    const runSync = async () => {
+      try {
+        const queue = await get<PendingAction[]>(`sync_queue_${workspaceId}`);
+        if (!queue || queue.length === 0) return;
+        const remainingQueue: PendingAction[] = [];
+        const unrecoverableErrors = [
+          "LIMIT_REACHED",
+          "SHORT_CODE_EXISTS",
+          "FORBIDDEN",
+          "RESERVED_SHORT_CODE",
+          "LINK_NOT_FOUND",
+          "WORKSPACE_NOT_FOUND",
+        ];
 
-      for (const action of queue) {
-        try {
-          let res: { success: boolean; error?: string } = { success: false };
-          if (action.type === "CREATE") {
-            res = await actions.onCreate(action.payload);
-          } else if (action.type === "UPDATE") {
-            res = await actions.onUpdate(action.payload);
-          } else if (action.type === "DELETE") {
-            res = await actions.onDelete(action.payload.linkId as string);
-          } else if (action.type === "TOGGLE") {
-            res = await actions.onToggle(
-              action.payload.linkId as string,
-              action.payload.isActive as boolean
-            );
-          }
-
-          if (!res.success) {
-            if (res.error && unrecoverableErrors.includes(res.error)) {
-              toast.error(
-                `Offline action discarded: ${res.error.replace(/_/g, " ")}`
+        for (const action of queue) {
+          try {
+            let res: { success: boolean; error?: string } = { success: false };
+            if (action.type === "CREATE") {
+              res = await actions.onCreate(action.payload);
+            } else if (action.type === "UPDATE") {
+              res = await actions.onUpdate(action.payload);
+            } else if (action.type === "DELETE") {
+              res = await actions.onDelete(action.payload.linkId as string);
+            } else if (action.type === "TOGGLE") {
+              res = await actions.onToggle(
+                action.payload.linkId as string,
+                action.payload.isActive as boolean
               );
-              if (action.type === "CREATE") {
-                const tempShortCode = action.payload.shortCode as string;
-                setLinks((prev) => {
-                  const next = prev.filter(
-                    (l) =>
-                      !(
-                        l.id.startsWith("optimistic-") &&
-                        l.shortCode === tempShortCode
-                      )
-                  );
-                  set(`links_cache_${workspaceId}`, next).catch(() => {});
-                  return next;
-                });
-              }
-            } else {
-              remainingQueue.push(action);
             }
-          }
-        } catch {
-          remainingQueue.push(action);
-        }
-      }
 
-      if (remainingQueue.length === 0) {
+            if (!res.success) {
+              if (res.error && unrecoverableErrors.includes(res.error)) {
+                toast.error(
+                  `Offline action discarded: ${res.error.replace(/_/g, " ")}`
+                );
+                if (action.type === "CREATE") {
+                  const tempShortCode = action.payload.shortCode as string;
+                  setLinks((prev) => {
+                    const next = prev.filter(
+                      (l) =>
+                        !(
+                          l.id.startsWith("optimistic-") &&
+                          l.shortCode === tempShortCode
+                        )
+                    );
+                    set(`links_cache_${workspaceId}`, next).catch(() => {});
+                    return next;
+                  });
+                }
+              } else {
+                remainingQueue.push(action);
+              }
+            }
+          } catch {
+            remainingQueue.push(action);
+          }
+        }
+
+        if (remainingQueue.length === 0) {
+          await del(`sync_queue_${workspaceId}`);
+          toast.success("All offline interactions synchronized with cloud!");
+        } else {
+          await set(`sync_queue_${workspaceId}`, remainingQueue);
+        }
+      } catch {
         await del(`sync_queue_${workspaceId}`);
-        toast.success("All offline interactions synchronized with cloud!");
-      } else {
-        await set(`sync_queue_${workspaceId}`, remainingQueue);
       }
-    } catch {
-      await del(`sync_queue_${workspaceId}`);
+    };
+
+    if (typeof window !== "undefined" && navigator.locks) {
+      await navigator.locks.request(`sync_lock_${workspaceId}`, runSync);
+    } else {
+      await runSync();
     }
   }, [workspaceId, actions, setLinks]);
 

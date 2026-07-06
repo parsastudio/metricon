@@ -44,21 +44,21 @@ export function ExportButton({ data }: ExportButtonProps) {
         ...data.devices.map((d) => [d.name, d.value]),
       ];
 
-      const csvContent =
-        "data:text/csv;charset=utf-8," +
-        rows
-          .map((e) =>
-            e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")
-          )
-          .join("\n");
+      const csvContent = rows
+        .map((e) =>
+          e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
 
-      const encodedUri = encodeURI(csvContent);
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
+      link.setAttribute("href", url);
       link.setAttribute("download", `metricon_analytics_${Date.now()}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       toast.success("Analytics data exported successfully as CSV");
     } catch {
       toast.error("Failed to export analytics data");

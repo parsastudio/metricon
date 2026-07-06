@@ -256,6 +256,28 @@ export async function revokeWorkspaceInvitation(
 export async function removeMember(workspaceId: string, memberId: string) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner"]);
+
+    const [memberToDelete] = await db
+      .select()
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.id, memberId))
+      .limit(1);
+
+    if (memberToDelete?.role === "owner") {
+      const owners = await db
+        .select({ id: workspaceMembers.id })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, workspaceId),
+            eq(workspaceMembers.role, "owner")
+          )
+        );
+      if (owners.length <= 1) {
+        return { success: false, error: "SOLE_OWNER_REMOVAL_FORBIDDEN" };
+      }
+    }
+
     await db.delete(workspaceMembers).where(eq(workspaceMembers.id, memberId));
     return { success: true };
   } catch (error) {
@@ -276,6 +298,28 @@ export async function updateMemberRole(
 ) {
   try {
     await verifyWorkspaceAccess(workspaceId, ["owner"]);
+
+    const [memberToUpdate] = await db
+      .select()
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.id, memberId))
+      .limit(1);
+
+    if (memberToUpdate?.role === "owner" && newRole !== "owner") {
+      const owners = await db
+        .select({ id: workspaceMembers.id })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, workspaceId),
+            eq(workspaceMembers.role, "owner")
+          )
+        );
+      if (owners.length <= 1) {
+        return { success: false, error: "SOLE_OWNER_DEMOTION_FORBIDDEN" };
+      }
+    }
+
     await db
       .update(workspaceMembers)
       .set({ role: newRole })

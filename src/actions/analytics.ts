@@ -176,11 +176,14 @@ export async function recordClick(
 export async function syncLinksClicks() {
   await db.execute(sql`
     UPDATE links
-    SET clicks_count = COALESCE((
-      SELECT CAST(COUNT(*) AS integer)
-      FROM analytics
-      WHERE analytics.link_id = links.id
-    ), 0),
+    SET clicks_count = GREATEST(
+      links.clicks_count,
+      COALESCE((
+        SELECT CAST(COUNT(*) AS integer)
+        FROM analytics
+        WHERE analytics.link_id = links.id
+      ), 0)
+    ),
     updated_at = NOW()
     WHERE id IN (
       SELECT DISTINCT link_id

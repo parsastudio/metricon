@@ -12,6 +12,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   const services = [
     async (ip: string, signal: AbortSignal) => {
       const res = await fetch(`https://ipapi.co/${ip}/country/`, { signal });
+      if (res.status === 429) throw new Error("RateLimit");
       if (res.ok) {
         const text = await res.text();
         if (text && text.trim().length === 2) {
@@ -43,7 +44,7 @@ export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   ];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 500);
+  const timeoutId = setTimeout(() => controller.abort(), 600);
 
   try {
     const country = await Promise.any(
