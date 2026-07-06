@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { workspaces } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import Stripe from "stripe";
 
 export async function POST(req: Request) {
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object as Stripe.Subscription;
       const subscriptionId = subscription.id;
+      const customerId = subscription.customer as string;
       const status = subscription.status;
       await db.transaction(async (tx) => {
         if (status === "active" || status === "trialing") {
@@ -57,7 +58,12 @@ export async function POST(req: Request) {
               stripeSubscriptionId: subscriptionId,
               updatedAt: new Date(),
             })
-            .where(eq(workspaces.stripeSubscriptionId, subscriptionId));
+            .where(
+              or(
+                eq(workspaces.stripeSubscriptionId, subscriptionId),
+                eq(workspaces.stripeCustomerId, customerId)
+              )
+            );
         } else {
           await tx
             .update(workspaces)
@@ -67,13 +73,19 @@ export async function POST(req: Request) {
               stripeSubscriptionId: null,
               updatedAt: new Date(),
             })
-            .where(eq(workspaces.stripeSubscriptionId, subscriptionId));
+            .where(
+              or(
+                eq(workspaces.stripeSubscriptionId, subscriptionId),
+                eq(workspaces.stripeCustomerId, customerId)
+              )
+            );
         }
       });
     }
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
       const subscriptionId = subscription.id;
+      const customerId = subscription.customer as string;
       await db.transaction(async (tx) => {
         await tx
           .update(workspaces)
@@ -83,7 +95,12 @@ export async function POST(req: Request) {
             stripeSubscriptionId: null,
             updatedAt: new Date(),
           })
-          .where(eq(workspaces.stripeSubscriptionId, subscriptionId));
+          .where(
+            or(
+              eq(workspaces.stripeSubscriptionId, subscriptionId),
+              eq(workspaces.stripeCustomerId, customerId)
+            )
+          );
       });
     }
   } catch (err) {

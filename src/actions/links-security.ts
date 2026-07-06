@@ -79,7 +79,9 @@ export async function verifyLinkPassword(
         ? existingRecord.attempts
         : 0;
 
-    if (link.password !== passwordEntered) {
+    const hashedEntered = await hashSha256(passwordEntered);
+
+    if (link.password !== passwordEntered && link.password !== hashedEntered) {
       const attempts = baseAttempts + 1;
       const lockedUntil =
         attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;

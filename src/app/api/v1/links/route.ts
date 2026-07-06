@@ -63,7 +63,12 @@ export async function GET(req: Request) {
       .from(links)
       .where(eq(links.workspaceId, workspaceId));
 
-    return NextResponse.json({ success: true, links: result });
+    const maskedResult = result.map((link) => ({
+      ...link,
+      password: link.password ? "●●●●●●" : null,
+    }));
+
+    return NextResponse.json({ success: true, links: maskedResult });
   } catch {
     return NextResponse.json(
       { error: "INTERNAL_SERVER_ERROR" },
@@ -139,6 +144,26 @@ export async function POST(req: Request) {
       .toLowerCase()
       .replace(/[^a-zA-Z0-9-]/g, "");
 
+    const RESERVED_WORDS = [
+      "expired",
+      "protected",
+      "api",
+      "dashboard",
+      "auth",
+      "static",
+      "r",
+      "links",
+      "analytics",
+      "members",
+      "billing",
+    ];
+    if (RESERVED_WORDS.includes(cleanShortCode)) {
+      return NextResponse.json(
+        { error: "RESERVED_SHORT_CODE" },
+        { status: 400 }
+      );
+    }
+
     const [existingShortCode] = await db
       .select()
       .from(links)
@@ -169,13 +194,17 @@ export async function POST(req: Request) {
       );
     }
 
+    const hashedPassword = validated.password
+      ? await hashSha256(validated.password)
+      : null;
+
     await db.insert(links).values({
       id: linkId,
       workspaceId: validated.workspaceId,
       originalUrl: validated.originalUrl,
       shortCode: cleanShortCode,
       title: validated.title || validated.originalUrl,
-      password: validated.password || null,
+      password: hashedPassword,
       expiresAt: expiresAtDate,
       maxClicks: validated.maxClicks || null,
       iosUrl: validated.iosUrl || null,

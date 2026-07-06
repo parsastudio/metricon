@@ -7,10 +7,11 @@ import { verifyWorkspaceAccess } from "@/lib/rbac";
 import { revalidateTag } from "next/cache";
 import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 import { ZodError } from "zod";
+import { hashSha256 } from "@/lib/crypto";
 
 export async function getLinks(workspaceId: string) {
   await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
-  return await db
+  const dbLinks = await db
     .select({
       id: links.id,
       workspaceId: links.workspaceId,
@@ -32,6 +33,11 @@ export async function getLinks(workspaceId: string) {
     .from(links)
     .where(eq(links.workspaceId, workspaceId))
     .orderBy(desc(links.createdAt));
+
+  return dbLinks.map((link) => ({
+    ...link,
+    password: link.password ? "●●●●●●" : null,
+  }));
 }
 
 export async function createLink(data: {
@@ -110,13 +116,17 @@ export async function createLink(data: {
     }
 
     const linkId = crypto.randomUUID();
+    const hashedPassword = validated.password
+      ? await hashSha256(validated.password)
+      : null;
+
     await db.insert(links).values({
       id: linkId,
       workspaceId: validated.workspaceId,
       originalUrl: validated.originalUrl,
       shortCode: cleanShortCode,
       title: validated.title || validated.originalUrl,
-      password: validated.password || null,
+      password: hashedPassword,
       expiresAt: validated.expiresAt ? new Date(validated.expiresAt) : null,
       maxClicks: validated.maxClicks || null,
       iosUrl: validated.iosUrl || null,
@@ -176,12 +186,21 @@ export async function updateLink(data: {
       return { success: false, error: "LINK_NOT_FOUND" };
     }
 
+    let passwordValue = link.password;
+    if (validated.password !== undefined) {
+      if (validated.password === "") {
+        passwordValue = null;
+      } else if (validated.password !== "●●●●●●") {
+        passwordValue = await hashSha256(validated.password);
+      }
+    }
+
     await db
       .update(links)
       .set({
         originalUrl: validated.originalUrl,
         title: validated.title || validated.originalUrl,
-        password: validated.password || null,
+        password: passwordValue,
         expiresAt: validated.expiresAt ? new Date(validated.expiresAt) : null,
         maxClicks: validated.maxClicks || null,
         iosUrl: validated.iosUrl || null,

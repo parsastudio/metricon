@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { set, get } from "idb-keyval";
 import { LinkItem } from "@/lib/validations";
 import { useOfflineQueue } from "./use-offline-queue";
@@ -29,11 +29,29 @@ export function useOfflineSync(
   }
 ) {
   const [links, setLinks] = useState<LinkItem[]>(initialLinks);
+  const actionsRef = useRef(actions);
+
+  useEffect(() => {
+    actionsRef.current = actions;
+  }, [actions]);
+
+  const stableActions = useMemo(
+    () => ({
+      onCreate: (data: Record<string, unknown>) =>
+        actionsRef.current.onCreate(data),
+      onUpdate: (data: Record<string, unknown>) =>
+        actionsRef.current.onUpdate(data),
+      onDelete: (linkId: string) => actionsRef.current.onDelete(linkId),
+      onToggle: (linkId: string, isActive: boolean) =>
+        actionsRef.current.onToggle(linkId, isActive),
+    }),
+    []
+  );
 
   const { isOnline, queueAction } = useOfflineQueue(
     workspaceId,
     setLinks,
-    actions
+    stableActions
   );
 
   useEffect(() => {
@@ -89,7 +107,7 @@ export function useOfflineSync(
       };
       if (navigator.onLine) {
         try {
-          const res = await actions.onCreate(data);
+          const res = await stableActions.onCreate(data);
           if (!res.success) throw new Error();
           if (res.success && res.linkId) {
             const realId = res.linkId;
@@ -108,7 +126,7 @@ export function useOfflineSync(
         await queueAction(action);
       }
     },
-    [workspaceId, links, actions, queueAction]
+    [workspaceId, links, stableActions, queueAction]
   );
 
   const updateLinkOffline = useCallback(
@@ -142,7 +160,7 @@ export function useOfflineSync(
       };
       if (navigator.onLine) {
         try {
-          const res = await actions.onUpdate(data);
+          const res = await stableActions.onUpdate(data);
           if (!res.success) throw new Error();
         } catch {
           await queueAction(action);
@@ -151,7 +169,7 @@ export function useOfflineSync(
         await queueAction(action);
       }
     },
-    [workspaceId, links, actions, queueAction]
+    [workspaceId, links, stableActions, queueAction]
   );
 
   const toggleLinkOffline = useCallback(
@@ -171,7 +189,7 @@ export function useOfflineSync(
       };
       if (navigator.onLine) {
         try {
-          const res = await actions.onToggle(linkId, isActive);
+          const res = await stableActions.onToggle(linkId, isActive);
           if (!res.success) throw new Error();
         } catch {
           await queueAction(action);
@@ -180,7 +198,7 @@ export function useOfflineSync(
         await queueAction(action);
       }
     },
-    [workspaceId, links, actions, queueAction]
+    [workspaceId, links, stableActions, queueAction]
   );
 
   const deleteLinkOffline = useCallback(
@@ -196,7 +214,7 @@ export function useOfflineSync(
       };
       if (navigator.onLine) {
         try {
-          const res = await actions.onDelete(linkId);
+          const res = await stableActions.onDelete(linkId);
           if (!res.success) throw new Error();
         } catch {
           await queueAction(action);
@@ -205,7 +223,7 @@ export function useOfflineSync(
         await queueAction(action);
       }
     },
-    [workspaceId, links, actions, queueAction]
+    [workspaceId, links, stableActions, queueAction]
   );
 
   return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { get, set, del } from "idb-keyval";
 import { LinkItem } from "@/lib/validations";
@@ -29,6 +29,11 @@ export function useOfflineQueue(
   }
 ) {
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const actionsRef = useRef(actions);
+
+  useEffect(() => {
+    actionsRef.current = actions;
+  }, [actions]);
 
   const syncQueue = useCallback(async () => {
     const runSync = async () => {
@@ -51,7 +56,7 @@ export function useOfflineQueue(
               success: false,
             };
             if (action.type === "CREATE") {
-              res = await actions.onCreate(action.payload);
+              res = await actionsRef.current.onCreate(action.payload);
               if (res.success && res.linkId) {
                 const tempShortCode = action.payload.shortCode as string;
                 const realId = res.linkId;
@@ -67,11 +72,13 @@ export function useOfflineQueue(
                 });
               }
             } else if (action.type === "UPDATE") {
-              res = await actions.onUpdate(action.payload);
+              res = await actionsRef.current.onUpdate(action.payload);
             } else if (action.type === "DELETE") {
-              res = await actions.onDelete(action.payload.linkId as string);
+              res = await actionsRef.current.onDelete(
+                action.payload.linkId as string
+              );
             } else if (action.type === "TOGGLE") {
-              res = await actions.onToggle(
+              res = await actionsRef.current.onToggle(
                 action.payload.linkId as string,
                 action.payload.isActive as boolean
               );
@@ -95,6 +102,19 @@ export function useOfflineQueue(
                     set(`links_cache_${workspaceId}`, next).catch(() => {});
                     return next;
                   });
+                } else if (
+                  res.error === "LINK_NOT_FOUND" ||
+                  res.error === "WORKSPACE_NOT_FOUND"
+                ) {
+                  const targetLinkId = (action.payload.linkId ||
+                    action.payload.id) as string;
+                  if (targetLinkId) {
+                    setLinks((prev) => {
+                      const next = prev.filter((l) => l.id !== targetLinkId);
+                      set(`links_cache_${workspaceId}`, next).catch(() => {});
+                      return next;
+                    });
+                  }
                 }
               } else {
                 remainingQueue.push(action);
@@ -121,7 +141,7 @@ export function useOfflineQueue(
     } else {
       await runSync();
     }
-  }, [workspaceId, actions, setLinks]);
+  }, [workspaceId, setLinks]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
