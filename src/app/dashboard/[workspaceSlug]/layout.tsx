@@ -6,14 +6,7 @@ import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
-import {
-  Link2,
-  Users,
-  BarChart3,
-  CreditCard,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export default async function DashboardLayout({
   children,
@@ -39,31 +32,35 @@ export default async function DashboardLayout({
     }
   }
 
-  const menuItems = [
+  const menuItems: {
+    name: string;
+    href: string;
+    icon: "links" | "analytics" | "members" | "billing" | "settings";
+  }[] = [
     {
       name: "My Links",
       href: `/dashboard/${workspaceSlug}/links`,
-      icon: Link2,
+      icon: "links",
     },
     {
       name: "Analytics",
       href: `/dashboard/${workspaceSlug}/analytics`,
-      icon: BarChart3,
+      icon: "analytics",
     },
     {
       name: "Team Members",
       href: `/dashboard/${workspaceSlug}/members`,
-      icon: Users,
+      icon: "members",
     },
     {
       name: "Billing Plan",
       href: `/dashboard/${workspaceSlug}/billing`,
-      icon: CreditCard,
+      icon: "billing",
     },
     {
       name: "Settings",
       href: `/dashboard/${workspaceSlug}/settings`,
-      icon: Settings,
+      icon: "settings",
     },
   ];
 

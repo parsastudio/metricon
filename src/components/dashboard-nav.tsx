@@ -4,12 +4,29 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import {
+  Link2,
+  BarChart3,
+  Users,
+  CreditCard,
+  Settings,
+  HelpCircle,
+} from "lucide-react";
+
+const iconMap = {
+  links: Link2,
+  analytics: BarChart3,
+  members: Users,
+  billing: CreditCard,
+  settings: Settings,
+} as const;
+
+export type NavIconType = keyof typeof iconMap;
 
 interface NavItem {
   name: string;
   href: string;
-  icon: LucideIcon;
+  icon: NavIconType;
 }
 
 interface DashboardNavProps {
@@ -22,7 +39,7 @@ export function DashboardNav({ items }: DashboardNavProps) {
   return (
     <nav className="space-y-1 p-3">
       {items.map((item) => {
-        const Icon = item.icon;
+        const Icon = iconMap[item.icon] || HelpCircle;
         const isActive = pathname === item.href;
         return (
           <Link
