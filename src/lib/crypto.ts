@@ -6,15 +6,18 @@ export async function hashSha256(message: string): Promise<string> {
 }
 
 export async function getSaltedIpHash(ip: string): Promise<string> {
-  const salt = process.env.IP_HASH_SALT || "default-secret-salt-2026";
+  const salt = process.env.IP_HASH_SALT;
+  if (!salt) {
+    throw new Error("Missing IP_HASH_SALT environment variable");
+  }
   return hashSha256(`${ip}:${salt}`);
 }
 
 export async function signSession(userId: string): Promise<string> {
-  const secret =
-    process.env.SESSION_SECRET ||
-    process.env.STRIPE_SECRET_KEY ||
-    "default-session-salt-secret-2026";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("Missing SESSION_SECRET environment variable");
+  }
   const signature = await hashSha256(`${userId}:${secret}`);
   return `${userId}.${signature}`;
 }
@@ -36,10 +39,10 @@ export async function verifySession(
   const parts = signedValue.split(".");
   if (parts.length !== 2) return null;
   const [userId, signature] = parts;
-  const secret =
-    process.env.SESSION_SECRET ||
-    process.env.STRIPE_SECRET_KEY ||
-    "default-session-salt-secret-2026";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("Missing SESSION_SECRET environment variable");
+  }
   const expectedSignature = await hashSha256(`${userId}:${secret}`);
   if (timingSafeEqual(signature, expectedSignature)) {
     return userId;
