@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { LinkEditor } from "./link-editor";
 import { QrCodeDialog } from "./qr-code-dialog";
-import { RedirectSimulatorDialog } from "./redirect-simulator-dialog";
 import { LinkItem } from "@/lib/validations";
 import { safeCopyToClipboard } from "@/lib/utils";
 import { LinkRow } from "./link-row";
@@ -41,7 +40,6 @@ export function LinksTable({
   const [sortBy, setSortBy] = React.useState<"newest" | "clicks">("newest");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [editingLink, setEditingLink] = React.useState<LinkItem | null>(null);
-  const [simulatorLink, setSimulatorLink] = React.useState<LinkItem | null>(null);
   const [qrLink, setQrLink] = React.useState<{
     url: string;
     title: string;
@@ -204,7 +202,6 @@ export function LinksTable({
                 copiedId={copiedId}
                 onCopy={handleCopyLink}
                 onToggleActive={handleToggleActive}
-                onSelectSimulator={(l) => setSimulatorLink(l)}
                 onSelectQr={(url, title) => setQrLink({ url, title })}
                 onSelectEdit={(l) => {
                   if (l.id.startsWith("optimistic-")) {
@@ -239,13 +236,6 @@ export function LinksTable({
           onClose={() => setQrLink(null)}
         />
       )}
-      <RedirectSimulatorDialog
-        link={simulatorLink}
-        workspacePrefix={workspacePrefix}
-        origin={origin}
-        isOpen={!!simulatorLink}
-        onClose={() => setSimulatorLink(null)}
-      />
     </div>
   );
 }

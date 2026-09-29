@@ -2,12 +2,8 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Mail, ShieldAlert, Eye } from "lucide-react";
-import {
-  sendWeeklyWorkspaceReport,
-  getWeeklyWorkspaceReportHtml,
-} from "@/actions/workspace-reports";
-import { EmailPreviewDialog } from "@/components/email-preview-dialog";
+import { Sparkles, Mail, ShieldAlert } from "lucide-react";
+import { sendWeeklyWorkspaceReport } from "@/actions/workspace-reports";
 import { toast } from "sonner";
 
 interface WeeklyReportTriggerProps {
@@ -20,9 +16,6 @@ export function WeeklyReportTrigger({
   isOwner,
 }: WeeklyReportTriggerProps) {
   const [loading, setLoading] = React.useState(false);
-  const [previewOpen, setPreviewOpen] = React.useState(false);
-  const [previewHtml, setPreviewHtml] = React.useState("");
-  const [previewLoading, setPreviewLoading] = React.useState(false);
 
   const handleTrigger = async () => {
     if (!isOwner) return;
@@ -30,7 +23,7 @@ export function WeeklyReportTrigger({
     try {
       const res = await sendWeeklyWorkspaceReport(workspaceId);
       if (res.success) {
-        toast.success("Weekly analytics digest dispatched successfully!");
+        toast.success("Weekly analytics digest dispatch initialized!");
       } else {
         toast.error("Failed to generate performance report digest.");
       }
@@ -38,23 +31,6 @@ export function WeeklyReportTrigger({
       toast.error("An error occurred during digest processing.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleOpenPreview = async () => {
-    setPreviewOpen(true);
-    setPreviewLoading(true);
-    try {
-      const res = await getWeeklyWorkspaceReportHtml(workspaceId);
-      if (res.success && res.html) {
-        setPreviewHtml(res.html);
-      } else {
-        toast.error("Failed to load email preview template");
-      }
-    } catch {
-      toast.error("Error generating preview");
-    } finally {
-      setPreviewLoading(false);
     }
   };
 
@@ -88,18 +64,7 @@ export function WeeklyReportTrigger({
           HTML email report to all workspace owners.
         </p>
 
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleOpenPreview}
-            className="cursor-pointer gap-2"
-            size="sm"
-          >
-            <Eye className="size-3.5" />
-            Preview Email Digest HTML
-          </Button>
-
+        <div className="mt-4 flex justify-end">
           {isOwner ? (
             <Button
               onClick={handleTrigger}
@@ -117,14 +82,6 @@ export function WeeklyReportTrigger({
           )}
         </div>
       </div>
-
-      <EmailPreviewDialog
-        isOpen={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        htmlContent={previewHtml}
-        loading={previewLoading}
-        workspaceName="Workspace Telemetry"
-      />
     </div>
   );
 }

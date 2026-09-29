@@ -48,21 +48,6 @@ function AuthContent() {
     }
   };
 
-  const handleInstantDemoLogin = async () => {
-    setLoading(true);
-    try {
-      const result = await loginUser("demo@metricon.co", "Alex Morgan");
-      if (result.success && result.defaultWorkspaceSlug) {
-        toast.success("Instant Access Granted! Welcome to Metricon Demo.");
-        router.push(`/dashboard/${result.defaultWorkspaceSlug}`);
-      }
-    } catch {
-      toast.error("Failed to initialize demo sandbox session.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="border-border bg-card w-full max-w-sm space-y-6 rounded-2xl border p-6 shadow-xl">
       <div className="space-y-2 text-center">
@@ -125,24 +110,12 @@ function AuthContent() {
           </Button>
 
           {IS_DEMO_MODE && (
-            <div className="space-y-3 pt-1">
-              <div className="relative flex items-center justify-center">
-                <div className="border-border/60 absolute inset-0 flex items-center border-t" />
-                <span className="bg-card text-muted-foreground relative px-2 text-[10px] uppercase font-bold tracking-wider">
-                  Or instant access
-                </span>
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleInstantDemoLogin}
-                disabled={loading}
-                variant="secondary"
-                className="w-full cursor-pointer gap-2 border border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 font-bold"
-              >
-                <Sparkles className="size-4" />
-                ⚡ 1-Click Instant Demo Login
-              </Button>
+            <div className="border-primary/20 bg-primary/5 text-primary flex items-start gap-2 rounded-lg p-3 text-[10px] leading-normal">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                Testing Sandbox Enabled: Click above to test complete platform
+                actions without waiting for Resend mail challenges.
+              </span>
             </div>
           )}
         </form>

@@ -6,72 +6,6 @@ import { eq, and } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 import { getWorkspaceAnalytics } from "@/actions/analytics";
 import { sendEmail } from "@/lib/resend";
-import { IS_DEMO_MODE } from "@/core/config";
-
-export async function getWeeklyWorkspaceReportHtml(workspaceId: string) {
-  try {
-    await verifyWorkspaceAccess(workspaceId, ["owner", "admin", "viewer"]);
-    const [workspace] = await db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.id, workspaceId))
-      .limit(1);
-
-    if (!workspace) {
-      return { success: false, error: "WORKSPACE_NOT_FOUND" };
-    }
-
-    const analyticsData = await getWorkspaceAnalytics(workspaceId, "7d");
-
-    const html = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 580px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-        <div style="margin-bottom: 20px;">
-          <span style="background-color: #0284c7; color: #ffffff; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700;">METRICON DIGEST</span>
-          <h2 style="color: #0f172a; margin: 12px 0 4px 0; font-size: 20px;">Weekly Campaign Telemetry</h2>
-          <p style="color: #64748b; font-size: 13px; margin: 0;">Performance report for <strong>${workspace.name}</strong></p>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; padding: 18px; margin: 20px 0; border: 1px solid #e2e8f0;">
-          <div style="display: flex; justify-content: space-between;">
-            <div>
-              <span style="color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase;">Total Clicks</span>
-              <h3 style="color: #0f172a; font-size: 26px; margin: 4px 0 0 0; font-weight: 800;">${analyticsData.kpi.totalClicks.toLocaleString()}</h3>
-            </div>
-            <div>
-              <span style="color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase;">Unique Visitors</span>
-              <h3 style="color: #0284c7; font-size: 26px; margin: 4px 0 0 0; font-weight: 800;">${analyticsData.kpi.uniqueClicks.toLocaleString()}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin: 20px 0;">
-          <h4 style="color: #0f172a; font-size: 13px; text-transform: uppercase; margin-bottom: 8px;">Top Performing Link</h4>
-          <div style="background-color: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <p style="color: #0284c7; font-weight: 700; margin: 0; font-family: monospace; font-size: 13px;">${analyticsData.kpi.topLink}</p>
-          </div>
-        </div>
-
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 16px;">
-          <h4 style="color: #0f172a; font-size: 13px; text-transform: uppercase; margin-bottom: 12px;">Geographic Distribution</h4>
-          ${analyticsData.countries.slice(0, 4).map((c) => `
-            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #334155;">
-              <span>${c.name}</span>
-              <strong style="color: #0f172a;">${c.value} clicks</strong>
-            </div>
-          `).join("")}
-        </div>
-
-        <p style="color: #94a3b8; font-size: 11px; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
-          © Metricon Link Telemetry Platform. Generated live in Demo Sandbox.
-        </p>
-      </div>
-    `;
-
-    return { success: true, html };
-  } catch {
-    return { success: false, error: "SERVER_ERROR" };
-  }
-}
 
 export async function sendWeeklyWorkspaceReport(workspaceId: string) {
   try {
@@ -170,13 +104,10 @@ export async function sendWeeklyWorkspaceReport(workspaceId: string) {
     );
 
     if (!hasSuccessfulDispatch && members.length > 0) {
-      if (IS_DEMO_MODE) {
-        return { success: true, isDemo: true };
-      }
       return { success: false, error: "EMAIL_DISPATCH_FAILURE" };
     }
 
-    return { success: true, isDemo: IS_DEMO_MODE };
+    return { success: true };
   } catch {
     return { success: false, error: "SERVER_ERROR" };
   }
