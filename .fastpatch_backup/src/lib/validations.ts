@@ -64,9 +64,6 @@ export const pendingInviteSchema = z.object({
 
 export type PendingInvite = z.infer<typeof pendingInviteSchema>;
 
-export type CreateLinkInput = z.infer<typeof createLinkSchema>;
-export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
-
 export const createLinkSchema = z.object({
   workspaceId: z.string().min(1),
   originalUrl: z.string().url(),

@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { workspaces } from "@/lib/schema";
 import { eq, or } from "drizzle-orm";
 import Stripe from "stripe";
-import { SUBSCRIPTION_PLANS } from "@/core/config";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
             .update(workspaces)
             .set({
               plan: "pro",
-              linkLimit: SUBSCRIPTION_PLANS.pro.limits.links,
+              linkLimit: 1000000,
               stripeSubscriptionId: subscriptionId,
               updatedAt: new Date(),
             })
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
             .update(workspaces)
             .set({
               plan: "pro",
-              linkLimit: SUBSCRIPTION_PLANS.pro.limits.links,
+              linkLimit: 1000000,
               stripeSubscriptionId: subscriptionId,
               updatedAt: new Date(),
             })
@@ -70,7 +69,7 @@ export async function POST(req: Request) {
             .update(workspaces)
             .set({
               plan: "free",
-              linkLimit: SUBSCRIPTION_PLANS.free.limits.links,
+              linkLimit: 10,
               stripeSubscriptionId: null,
               updatedAt: new Date(),
             })
@@ -92,7 +91,7 @@ export async function POST(req: Request) {
           .update(workspaces)
           .set({
             plan: "free",
-            linkLimit: SUBSCRIPTION_PLANS.free.limits.links,
+            linkLimit: 10,
             stripeSubscriptionId: null,
             updatedAt: new Date(),
           })

@@ -5,14 +5,8 @@ import { links, workspaces } from "@/lib/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 import { revalidateTag } from "next/cache";
-import {
-  createLinkSchema,
-  updateLinkSchema,
-  CreateLinkInput,
-  UpdateLinkInput,
-} from "@/lib/validations";
+import { createLinkSchema, updateLinkSchema } from "@/lib/validations";
 import { ZodError } from "zod";
-import { SUBSCRIPTION_PLANS } from "@/core/config";
 import { hashSha256 } from "@/lib/crypto";
 
 export async function getLinks(workspaceId: string) {
@@ -46,7 +40,19 @@ export async function getLinks(workspaceId: string) {
   }));
 }
 
-export async function createLink(data: CreateLinkInput) {
+export async function createLink(data: {
+  workspaceId: string;
+  originalUrl: string;
+  shortCode: string;
+  title?: string;
+  password?: string;
+  expiresAt?: string;
+  maxClicks?: number;
+  iosUrl?: string;
+  androidUrl?: string;
+  desktopUrl?: string;
+  geoRouting?: Record<string, string>;
+}) {
   try {
     const validated = createLinkSchema.parse(data);
     await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);
@@ -149,7 +155,19 @@ export async function createLink(data: CreateLinkInput) {
   }
 }
 
-export async function updateLink(data: UpdateLinkInput) {
+export async function updateLink(data: {
+  linkId: string;
+  workspaceId: string;
+  originalUrl: string;
+  title?: string;
+  password?: string;
+  expiresAt?: string;
+  maxClicks?: number;
+  iosUrl?: string;
+  androidUrl?: string;
+  desktopUrl?: string;
+  geoRouting?: Record<string, string>;
+}) {
   try {
     const validated = updateLinkSchema.parse(data);
     await verifyWorkspaceAccess(validated.workspaceId, ["owner", "admin"]);

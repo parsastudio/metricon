@@ -16,6 +16,8 @@ interface LinkEditorFormProps {
   setPassword: (pass: string) => void;
   expiresAt: string;
   setExpiresAt: (expires: string) => void;
+  maxClicks?: number;
+  setMaxClicks: (clicks: number | undefined) => void;
   iosUrl: string;
   setIosUrl: (url: string) => void;
   androidUrl: string;
@@ -44,6 +46,8 @@ export function LinkEditorForm({
   setPassword,
   expiresAt,
   setExpiresAt,
+  maxClicks,
+  setMaxClicks,
   iosUrl,
   setIosUrl,
   androidUrl,
@@ -219,7 +223,7 @@ export function LinkEditorForm({
             Protection & Limits
           </span>
           <div
-            className="grid grid-cols-2 gap-2"
+            className="grid grid-cols-3 gap-2"
             onClick={() => !isPro && onUpgradePrompt()}
           >
             <input
@@ -236,6 +240,20 @@ export function LinkEditorForm({
               placeholder={isPro ? "" : "Expiration (PRO)"}
               value={expiresAt}
               onChange={(e) => isPro && setExpiresAt(e.target.value)}
+              className={`border-border focus:border-primary w-full rounded-md border bg-transparent px-3 py-1.5 text-xs outline-hidden ${!isPro ? "cursor-pointer opacity-60" : ""}`}
+            />
+            <input
+              type="number"
+              min={1}
+              readOnly={!isPro}
+              placeholder={isPro ? "Max Clicks" : "Max Clicks (PRO)"}
+              value={maxClicks || ""}
+              onChange={(e) =>
+                isPro &&
+                setMaxClicks(
+                  e.target.value ? parseInt(e.target.value) : undefined
+                )
+              }
               className={`border-border focus:border-primary w-full rounded-md border bg-transparent px-3 py-1.5 text-xs outline-hidden ${!isPro ? "cursor-pointer opacity-60" : ""}`}
             />
           </div>

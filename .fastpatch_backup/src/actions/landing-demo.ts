@@ -3,7 +3,6 @@
 import { db } from "@/lib/db";
 import { workspaces, links } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-import { SUBSCRIPTION_PLANS } from "@/core/config";
 
 async function getOrCreateDemoWorkspace() {
   const [existing] = await db
@@ -24,7 +23,7 @@ async function getOrCreateDemoWorkspace() {
     slug: "sandbox-demo-org",
     shortPrefix: "demo",
     plan: "free",
-    linkLimit: SUBSCRIPTION_PLANS.pro.limits.links,
+    linkLimit: 1000000,
   });
 
   return {

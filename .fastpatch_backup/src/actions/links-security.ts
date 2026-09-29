@@ -5,16 +5,15 @@ import { links, workspaces, failedAttempts } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { getClientIp } from "@/lib/geoip";
-import { hashSha256, getSaltedIpHash, timingSafeEqual } from "@/lib/crypto";
+import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
 
 export async function generateUnlockSignature(
   workspacePrefix: string,
-  code: string,
-  ipHash: string
+  code: string
 ): Promise<string> {
   const secret =
-    process.env.SESSION_SECRET || "fallback_link_encryption_secret_2026";
-  return await hashSha256(`${workspacePrefix}:${code}:${ipHash}:${secret}:unlocked`);
+    process.env.STRIPE_SECRET_KEY || "fallback_encryption_token_2026";
+  return await hashSha256(`${workspacePrefix}:${code}:${secret}:unlocked`);
 }
 
 export async function verifyLinkPassword(
@@ -81,12 +80,8 @@ export async function verifyLinkPassword(
         : 0;
 
     const hashedEntered = await hashSha256(passwordEntered);
-    const isPasswordValid =
-      link.password &&
-      (timingSafeEqual(link.password, hashedEntered) ||
-        timingSafeEqual(link.password, passwordEntered));
 
-    if (!isPasswordValid) {
+    if (link.password !== passwordEntered && link.password !== hashedEntered) {
       const attempts = baseAttempts + 1;
       const lockedUntil =
         attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
@@ -123,7 +118,7 @@ export async function verifyLinkPassword(
     }
 
     const cookieStore = await cookies();
-    const signature = await generateUnlockSignature(workspacePrefix, code, ipHash);
+    const signature = await generateUnlockSignature(workspacePrefix, code);
 
     cookieStore.set(`link_unlocked_${workspacePrefix}_${code}`, signature, {
       httpOnly: true,

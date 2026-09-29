@@ -46,12 +46,6 @@ export default async function RedirectPage({
     redirect("/expired");
   }
 
-  const reqHeaders = await headers();
-  const userAgent = reqHeaders.get("user-agent") || "";
-  const referrer = reqHeaders.get("referer") || "Direct";
-  const rawIp = getClientIp(reqHeaders);
-  const ipHash = await getSaltedIpHash(rawIp);
-
   if (link.password) {
     const cookieStore = await cookies();
     const unlockedCookie = cookieStore.get(
@@ -59,14 +53,19 @@ export default async function RedirectPage({
     )?.value;
     const expectedSignature = await generateUnlockSignature(
       workspacePrefix,
-      code,
-      ipHash
+      code
     );
     const isUnlocked = unlockedCookie === expectedSignature;
     if (!isUnlocked) {
       redirect(`/r/${workspacePrefix}/${code}/protected`);
     }
   }
+
+  const reqHeaders = await headers();
+  const userAgent = reqHeaders.get("user-agent") || "";
+  const referrer = reqHeaders.get("referer") || "Direct";
+  const rawIp = getClientIp(reqHeaders);
+  const ipHash = await getSaltedIpHash(rawIp);
 
   let device = "Desktop";
   if (__device && (process.env.NODE_ENV === "development" || IS_DEMO_MODE)) {
@@ -163,27 +162,22 @@ export default async function RedirectPage({
     );
   }
 
-  after(async () => {
-    try {
-      await db.transaction(async (tx) => {
-        await tx.insert(analytics).values({
-          id: crypto.randomUUID(),
-          linkId: link.id,
-          country: country || "Unknown",
-          referrer: referrer || "Direct",
-          device: device || "Desktop",
-          browser: browser || "Unknown",
-          ipHash,
-          timestamp: new Date(),
-        });
-
-        await tx.execute(sql`
+  after(() => {
+    recordClick(link.id, {
+      country,
+      referrer,
+      device,
+      browser,
+      ipHash,
+    })
+      .then(() => {
+        return db.execute(sql`
           UPDATE links
           SET clicks_count = clicks_count + 1
           WHERE id = ${link.id};
         `);
-      });
-    } catch {}
+      })
+      .catch(() => {});
   });
 
   redirect(targetUrl);

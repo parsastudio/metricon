@@ -9,7 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
+/debug
 # testing
 /coverage
 
@@ -39,6 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-combined_files.txt
 extract.py
+.gitignore
 req.md
+combined_files.txt
+errors.txt
+fastpatch.py

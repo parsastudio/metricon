@@ -6,18 +6,28 @@ import { LinksTable } from "./links-table";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Wifi, WifiOff } from "lucide-react";
 import { useOrigin } from "@/hooks/use-origin";
-import { LinkItem, CreateLinkInput, UpdateLinkInput } from "@/lib/validations";
+import { LinkItem } from "@/lib/validations";
 
 interface LinksManagerProps {
   workspaceId: string;
   workspacePrefix: string;
   initialLinks: LinkItem[];
   isPro: boolean;
-  onCreateLink: (
-    data: CreateLinkInput
-  ) => Promise<{ success: boolean; error?: string; linkId?: string }>;
+  onCreateLink: (data: {
+    workspaceId: string;
+    originalUrl: string;
+    shortCode: string;
+    title?: string;
+    password?: string;
+    expiresAt?: string;
+    maxClicks?: number;
+    iosUrl?: string;
+    androidUrl?: string;
+    desktopUrl?: string;
+    geoRouting?: Record<string, string>;
+  }) => Promise<{ success: boolean; error?: string; linkId?: string }>;
   onUpdateLink: (
-    data: UpdateLinkInput
+    data: Record<string, unknown>
   ) => Promise<{ success: boolean; error?: string }>;
   onDeleteLink: (
     linkId: string
@@ -48,8 +58,23 @@ export function LinksManager({
     toggleLinkOffline,
     deleteLinkOffline,
   } = useOfflineSync(workspaceId, initialLinks, {
-    onCreate: async (data) => onCreateLink(data as unknown as CreateLinkInput),
-    onUpdate: async (data) => onUpdateLink(data as unknown as UpdateLinkInput),
+    onCreate: async (data) =>
+      onCreateLink(
+        data as {
+          workspaceId: string;
+          originalUrl: string;
+          shortCode: string;
+          title?: string;
+          password?: string;
+          expiresAt?: string;
+          maxClicks?: number;
+          iosUrl?: string;
+          androidUrl?: string;
+          desktopUrl?: string;
+          geoRouting?: Record<string, string>;
+        }
+      ),
+    onUpdate: async (data) => onUpdateLink(data),
     onDelete: async (linkId) => onDeleteLink(linkId),
     onToggle: async (linkId, isActive) => onToggleActive(linkId, isActive),
   });

@@ -5,9 +5,6 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { PasswordForm } from "./password-form";
 import { generateUnlockSignature } from "@/actions/links-security";
-import { headers } from "next/headers";
-import { getClientIp } from "@/lib/geoip";
-import { getSaltedIpHash } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +43,6 @@ export default async function ProtectedPage({ params }: PageProps) {
     redirect("/expired");
   }
 
-  const reqHeaders = await headers();
-  const rawIp = getClientIp(reqHeaders);
-  const ipHash = await getSaltedIpHash(rawIp);
-
   const cookieStore = await cookies();
   const unlockedCookie = cookieStore.get(
     `link_unlocked_${workspacePrefix}_${code}`
@@ -57,8 +50,7 @@ export default async function ProtectedPage({ params }: PageProps) {
 
   const expectedSignature = await generateUnlockSignature(
     workspacePrefix,
-    code,
-    ipHash
+    code
   );
 
   const isUnlocked = unlockedCookie === expectedSignature;

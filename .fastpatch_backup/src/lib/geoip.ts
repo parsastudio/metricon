@@ -1,21 +1,31 @@
-const ipGeoCache = new Map<string, { country: string; expiresAt: number }>();
-
 export async function resolveCountryFromIp(rawIp: string): Promise<string> {
   if (
     !rawIp ||
     rawIp === "127.0.0.1" ||
     rawIp === "::1" ||
     rawIp.startsWith("192.168.") ||
-    rawIp.startsWith("10.") ||
-    rawIp.startsWith("172.")
+    rawIp.startsWith("10.")
   ) {
     return "Unknown";
   }
 
-  const cached = ipGeoCache.get(rawIp);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.country;
-  }
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 400);
+
+    const response = await fetch(`https://ipapi.co/${rawIp}/country/`, {
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const country = await response.text();
+      if (country && country.trim().length === 2) {
+        return country.trim().toUpperCase();
+      }
+    }
+  } catch {}
 
   return "Unknown";
 }

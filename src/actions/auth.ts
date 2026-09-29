@@ -15,26 +15,7 @@ import { sendEmail } from "@/lib/resend";
 import { getAppOrigin } from "@/lib/network";
 import { hashSha256, signSession, verifySession } from "@/lib/crypto";
 
-async function generateUniquePrefix(): Promise<string> {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let attempts = 0;
-  while (attempts < 50) {
-    let prefix = "";
-    for (let i = 0; i < 4; i++) {
-      prefix += chars[Math.floor(Math.random() * chars.length)];
-    }
-    const [existing] = await db
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.shortPrefix, prefix))
-      .limit(1);
-    if (!existing) {
-      return prefix;
-    }
-    attempts++;
-  }
-  return crypto.randomUUID().substring(0, 5);
-}
+import { provisionWorkspaceForUser } from "@/lib/workspace-generator";
 
 export async function getSessionUser() {
   const cookieStore = await cookies();
@@ -87,39 +68,17 @@ export async function loginUser(email: string, name?: string) {
   if (IS_DEMO_MODE) {
     if (!existingUser) {
       const userId = crypto.randomUUID();
-      const workspaceId = crypto.randomUUID();
-      const workspaceSlug =
-        cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-") + "-org";
-      const shortPrefix = await generateUniquePrefix();
       const initialApiKeyRaw = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
       const hashedKey = await hashSha256(initialApiKeyRaw);
 
-      await db.transaction(async (tx) => {
-        await tx.insert(users).values({
-          id: userId,
-          email: cleanEmail,
-          name: name || cleanEmail.split("@")[0],
-          apiKey: hashedKey,
-        });
-
-        await tx.insert(workspaces).values({
-          id: workspaceId,
-          name: `${name || cleanEmail.split("@")[0]}'s Org`,
-          slug: workspaceSlug,
-          shortPrefix,
-          plan: "free",
-          linkLimit: 10,
-        });
-
-        await tx.insert(workspaceMembers).values({
-          id: crypto.randomUUID(),
-          workspaceId,
-          userId,
-          role: "owner",
-        });
+      const provisioned = await provisionWorkspaceForUser({
+        userId,
+        email: cleanEmail,
+        name: name || cleanEmail.split("@")[0],
+        hashedApiKey: hashedKey,
       });
 
-      defaultWorkspaceSlug = workspaceSlug;
+      defaultWorkspaceSlug = provisioned.workspaceSlug;
       existingUser = {
         id: userId,
         email: cleanEmail,
@@ -208,39 +167,17 @@ export async function verifyMagicToken(token: string) {
 
   if (!existingUser) {
     const userId = crypto.randomUUID();
-    const workspaceId = crypto.randomUUID();
-    const workspaceSlug =
-      tokenRecord.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-") + "-org";
-    const shortPrefix = await generateUniquePrefix();
     const initialApiKeyRaw = `mc_live_${crypto.randomUUID().replace(/-/g, "")}`;
     const hashedKey = await hashSha256(initialApiKeyRaw);
 
-    await db.transaction(async (tx) => {
-      await tx.insert(users).values({
-        id: userId,
-        email: tokenRecord.email,
-        name: tokenRecord.email.split("@")[0],
-        apiKey: hashedKey,
-      });
-
-      await tx.insert(workspaces).values({
-        id: workspaceId,
-        name: `${tokenRecord.email.split("@")[0]}'s Org`,
-        slug: workspaceSlug,
-        shortPrefix,
-        plan: "free",
-        linkLimit: 10,
-      });
-
-      await tx.insert(workspaceMembers).values({
-        id: crypto.randomUUID(),
-        workspaceId: workspaceId,
-        userId: userId,
-        role: "owner",
-      });
+    const provisioned = await provisionWorkspaceForUser({
+      userId,
+      email: tokenRecord.email,
+      name: tokenRecord.email.split("@")[0],
+      hashedApiKey: hashedKey,
     });
 
-    defaultWorkspaceSlug = workspaceSlug;
+    defaultWorkspaceSlug = provisioned.workspaceSlug;
     existingUser = {
       id: userId,
       email: tokenRecord.email,

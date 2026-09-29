@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { workspaces } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
-import { IS_DEMO_MODE, SUBSCRIPTION_PLANS } from "@/core/config";
+import { IS_DEMO_MODE } from "@/core/config";
 import { getAppOrigin } from "@/lib/network";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 
@@ -47,7 +47,7 @@ export async function upgradeToPro(workspaceId: string) {
         .update(workspaces)
         .set({
           plan: "pro",
-          linkLimit: SUBSCRIPTION_PLANS.pro.limits.links,
+          linkLimit: 1000000,
         })
         .where(eq(workspaces.id, workspaceId));
 
@@ -119,9 +119,17 @@ export async function createPortalSession(workspaceId: string) {
     }
 
     if (IS_DEMO_MODE) {
+      await db
+        .update(workspaces)
+        .set({
+          plan: "free",
+          linkLimit: 10,
+        })
+        .where(eq(workspaces.id, workspaceId));
+
       return {
         success: true,
-        url: `/dashboard/${workspace.slug}/billing?sandbox=manage_mock`,
+        url: `/dashboard/${workspace.slug}/billing?sandbox=downgrade`,
       };
     } else {
       if (!workspace.stripeCustomerId) {

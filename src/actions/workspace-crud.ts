@@ -9,27 +9,7 @@ import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
 } from "@/lib/validations";
-
-async function generateUniquePrefix(): Promise<string> {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let attempts = 0;
-  while (attempts < 50) {
-    let prefix = "";
-    for (let i = 0; i < 4; i++) {
-      prefix += chars[Math.floor(Math.random() * chars.length)];
-    }
-    const [existing] = await db
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.shortPrefix, prefix))
-      .limit(1);
-    if (!existing) {
-      return prefix;
-    }
-    attempts++;
-  }
-  return crypto.randomUUID().substring(0, 5);
-}
+import { generateUniquePrefix } from "@/lib/workspace-generator";
 
 export async function getWorkspaces() {
   const user = await getSessionUser();

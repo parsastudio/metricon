@@ -60,7 +60,11 @@ export default async function LinksPage({
             initialLinks={linksList}
             isPro={currentWorkspace.plan === "pro"}
             onCreateLink={createLink}
-            onUpdateLink={updateLink}
+            onUpdateLink={
+              updateLink as (
+                data: Record<string, unknown>
+              ) => Promise<{ success: boolean; error?: string }>
+            }
             onDeleteLink={boundDeleteLink}
             onToggleActive={boundToggleActive}
           />

@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { analytics, links } from "@/lib/schema";
-import { eq, gte, lte, and, inArray, sql, count, desc } from "drizzle-orm";
+import { eq, gte, lte, and, inArray, sql } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
 
 export async function getWorkspaceAnalytics(
@@ -67,11 +67,8 @@ export async function getWorkspaceAnalytics(
 
   const linkIds = workspaceLinks.map((l) => l.id);
 
-  const [kpi] = await db
-    .select({
-      totalClicks: count(),
-      uniqueClicks: sql<number>`count(distinct ${analytics.ipHash})`,
-    })
+  const clicks = await db
+    .select()
     .from(analytics)
     .where(
       and(
@@ -81,99 +78,47 @@ export async function getWorkspaceAnalytics(
       )
     );
 
-  const [topLinkResult] = await db
-    .select({
-      linkId: analytics.linkId,
-      clicks: count(),
-    })
-    .from(analytics)
-    .where(
-      and(
-        inArray(analytics.linkId, linkIds),
-        gte(analytics.timestamp, startDate),
-        lte(analytics.timestamp, endDate)
-      )
-    )
-    .groupBy(analytics.linkId)
-    .orderBy(desc(count()))
-    .limit(1);
+  const totalClicks = clicks.length;
+  const uniqueIps = new Set(clicks.map((c) => c.ipHash)).size;
 
-  let topLink = "N/A";
-  if (topLinkResult) {
-    const matched = workspaceLinks.find((l) => l.id === topLinkResult.linkId);
-    if (matched) {
-      topLink = matched.title || matched.shortCode;
-    }
-  }
+  const linkClicksCountMap: Record<string, number> = {};
+  clicks.forEach((c) => {
+    linkClicksCountMap[c.linkId] = (linkClicksCountMap[c.linkId] || 0) + 1;
+  });
 
-  const countries = await db
-    .select({
-      name: analytics.country,
-      value: count(),
-    })
-    .from(analytics)
-    .where(
-      and(
-        inArray(analytics.linkId, linkIds),
-        gte(analytics.timestamp, startDate),
-        lte(analytics.timestamp, endDate)
-      )
-    )
-    .groupBy(analytics.country)
-    .orderBy(desc(count()))
-    .limit(10);
+  const sortedLinksByClicks = [...workspaceLinks].sort((a, b) => {
+    const countA = linkClicksCountMap[a.id] || 0;
+    const countB = linkClicksCountMap[b.id] || 0;
+    return countB - countA;
+  });
 
-  const referrers = await db
-    .select({
-      name: analytics.referrer,
-      value: count(),
-    })
-    .from(analytics)
-    .where(
-      and(
-        inArray(analytics.linkId, linkIds),
-        gte(analytics.timestamp, startDate),
-        lte(analytics.timestamp, endDate)
-      )
-    )
-    .groupBy(analytics.referrer)
-    .orderBy(desc(count()))
-    .limit(10);
+  const topLinkObj = sortedLinksByClicks[0];
+  const topLink = topLinkObj
+    ? `${topLinkObj.title || topLinkObj.shortCode}`
+    : "N/A";
 
-  const devices = await db
-    .select({
-      name: analytics.device,
-      value: count(),
-    })
-    .from(analytics)
-    .where(
-      and(
-        inArray(analytics.linkId, linkIds),
-        gte(analytics.timestamp, startDate),
-        lte(analytics.timestamp, endDate)
-      )
-    )
-    .groupBy(analytics.device)
-    .orderBy(desc(count()))
-    .limit(5);
+  const countriesMap: Record<string, number> = {};
+  const referrersMap: Record<string, number> = {};
+  const devicesMap: Record<string, number> = {};
 
-  const rawTimeSeries = await db
-    .select({
-      date: sql<string>`to_char(${analytics.timestamp}, 'YYYY-MM-DD')`,
-      clicks: count(),
-    })
-    .from(analytics)
-    .where(
-      and(
-        inArray(analytics.linkId, linkIds),
-        gte(analytics.timestamp, startDate),
-        lte(analytics.timestamp, endDate)
-      )
-    )
-    .groupBy(sql`to_char(${analytics.timestamp}, 'YYYY-MM-DD')`)
-    .orderBy(sql`to_char(${analytics.timestamp}, 'YYYY-MM-DD')`);
+  clicks.forEach((c) => {
+    countriesMap[c.country] = (countriesMap[c.country] || 0) + 1;
+    referrersMap[c.referrer] = (referrersMap[c.referrer] || 0) + 1;
+    devicesMap[c.device] = (devicesMap[c.device] || 0) + 1;
+  });
+
+  const countries = Object.entries(countriesMap)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+  const referrers = Object.entries(referrersMap)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+  const devices = Object.entries(devicesMap)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
 
   const timeSeriesMap: Record<string, number> = {};
+
   const iterDate = new Date(startDate);
   const endIterDate = new Date(endDate);
   while (iterDate <= endIterDate) {
@@ -182,9 +127,10 @@ export async function getWorkspaceAnalytics(
     iterDate.setDate(iterDate.getDate() + 1);
   }
 
-  rawTimeSeries.forEach((entry) => {
-    if (entry.date in timeSeriesMap) {
-      timeSeriesMap[entry.date] = entry.clicks;
+  clicks.forEach((c) => {
+    const dateStr = c.timestamp.toISOString().split("T")[0];
+    if (dateStr in timeSeriesMap) {
+      timeSeriesMap[dateStr] += 1;
     }
   });
 
@@ -194,8 +140,8 @@ export async function getWorkspaceAnalytics(
 
   return {
     kpi: {
-      totalClicks: kpi?.totalClicks || 0,
-      uniqueClicks: kpi?.uniqueClicks || 0,
+      totalClicks,
+      uniqueClicks: uniqueIps,
       topLink,
     },
     countries,
