@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import QRCode from "qrcode";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -99,12 +98,9 @@ export function QrCodeDialog({
 
         <div className="bg-muted/30 border-border/60 mx-auto flex size-48 items-center justify-center overflow-hidden rounded-2xl border bg-white p-4">
           {pngDataUrl ? (
-            <Image
+            <img
               src={pngDataUrl}
               alt="QR Code Preview"
-              width={192}
-              height={192}
-              unoptimized
               className="size-full object-contain"
             />
           ) : (
