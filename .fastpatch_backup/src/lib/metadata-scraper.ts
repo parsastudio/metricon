@@ -27,7 +27,7 @@ function isSafeUrl(urlString: string): boolean {
     const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
     const match = hostname.match(ipv4Regex);
     if (match) {
-      const [, octet1, octet2] = match.map(Number);
+      const [, octet1, octet2, octet3, octet4] = match.map(Number);
       if (
         octet1 === 10 ||
         (octet1 === 172 && octet2 >= 16 && octet2 <= 31) ||

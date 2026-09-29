@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { analytics, links } from "@/lib/schema";
 import { eq, gte, lte, and, inArray, sql, count, desc } from "drizzle-orm";
 import { verifyWorkspaceAccess } from "@/lib/rbac";
-export { seedMockData } from "./analytics-seed";
 
 export async function getWorkspaceAnalytics(
   workspaceId: string,
@@ -35,6 +34,9 @@ export async function getWorkspaceAnalytics(
     const now = new Date();
     if (timeframe === "24h") {
       startDate.setHours(now.getHours() - 24);
+    } else if (timeframe === "7d") {
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
     } else if (timeframe === "30d") {
       startDate.setDate(now.getDate() - 30);
       startDate.setHours(0, 0, 0, 0);
@@ -105,7 +107,10 @@ export async function getWorkspaceAnalytics(
   }
 
   const countries = await db
-    .select({ name: analytics.country, value: count() })
+    .select({
+      name: analytics.country,
+      value: count(),
+    })
     .from(analytics)
     .where(
       and(
@@ -119,7 +124,10 @@ export async function getWorkspaceAnalytics(
     .limit(10);
 
   const referrers = await db
-    .select({ name: analytics.referrer, value: count() })
+    .select({
+      name: analytics.referrer,
+      value: count(),
+    })
     .from(analytics)
     .where(
       and(
@@ -133,7 +141,10 @@ export async function getWorkspaceAnalytics(
     .limit(10);
 
   const devices = await db
-    .select({ name: analytics.device, value: count() })
+    .select({
+      name: analytics.device,
+      value: count(),
+    })
     .from(analytics)
     .where(
       and(
@@ -196,7 +207,13 @@ export async function getWorkspaceAnalytics(
 
 export async function recordClick(
   linkId: string,
-  info: { country: string; referrer: string; device: string; browser: string; ipHash: string }
+  info: {
+    country: string;
+    referrer: string;
+    device: string;
+    browser: string;
+    ipHash: string;
+  }
 ) {
   await db.insert(analytics).values({
     id: crypto.randomUUID(),
@@ -215,11 +232,152 @@ export async function syncLinksClicks() {
     UPDATE links
     SET clicks_count = GREATEST(
       links.clicks_count,
-      COALESCE((SELECT CAST(COUNT(*) AS integer) FROM analytics WHERE analytics.link_id = links.id), 0)
+      COALESCE((
+        SELECT CAST(COUNT(*) AS integer)
+        FROM analytics
+        WHERE analytics.link_id = links.id
+      ), 0)
     ),
     updated_at = NOW()
     WHERE id IN (
-      SELECT DISTINCT link_id FROM analytics WHERE timestamp >= NOW() - INTERVAL '24 hours'
+      SELECT DISTINCT link_id
+      FROM analytics
+      WHERE timestamp >= NOW() - INTERVAL '24 hours'
     );
   `);
+}
+
+export async function seedMockData(workspaceId: string) {
+  try {
+    await verifyWorkspaceAccess(workspaceId, ["owner"]);
+
+    const link1Id = crypto.randomUUID();
+    const link2Id = crypto.randomUUID();
+    const link3Id = crypto.randomUUID();
+
+    const existing = await db
+      .select({ shortCode: links.shortCode })
+      .from(links)
+      .where(eq(links.workspaceId, workspaceId));
+
+    const existingCodes = new Set(existing.map((e) => e.shortCode));
+    const linksToInsert = [];
+
+    if (!existingCodes.has("launch-2026")) {
+      linksToInsert.push({
+        id: link1Id,
+        workspaceId,
+        shortCode: "launch-2026",
+        originalUrl: "https://github.com/metricon/launch",
+        title: "Product Launch Campaign Page",
+        clicksCount: 142,
+      });
+    }
+
+    if (!existingCodes.has("pricing-pro")) {
+      linksToInsert.push({
+        id: link2Id,
+        workspaceId,
+        shortCode: "pricing-pro",
+        originalUrl: "https://metricon.co/pricing",
+        title: "Pro Subscription Checkout Page",
+        clicksCount: 84,
+      });
+    }
+
+    if (!existingCodes.has("newsletter-sub")) {
+      linksToInsert.push({
+        id: link3Id,
+        workspaceId,
+        shortCode: "newsletter-sub",
+        originalUrl: "https://metricon.co/blog",
+        title: "Newsletter Opt-in Success Page",
+        clicksCount: 39,
+      });
+    }
+
+    if (linksToInsert.length > 0) {
+      await db.insert(links).values(linksToInsert);
+    }
+
+    const countries = ["US", "GB", "DE", "FR", "JP", "CA", "AU"];
+    const referrers = [
+      "Twitter",
+      "LinkedIn",
+      "Google",
+      "GitHub",
+      "Direct",
+      "Reddit",
+    ];
+    const devices = ["Desktop", "Mobile", "Tablet"];
+    const browsers = ["Chrome", "Safari", "Firefox", "Edge"];
+
+    const clicksToInsert = [];
+    const now = new Date();
+
+    if (!existingCodes.has("launch-2026")) {
+      for (let i = 0; i < 142; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - Math.floor(Math.random() * 30));
+        clicksToInsert.push({
+          id: crypto.randomUUID(),
+          linkId: link1Id,
+          timestamp: date,
+          country: countries[Math.floor(Math.random() * countries.length)],
+          referrer: referrers[Math.floor(Math.random() * referrers.length)],
+          device: devices[Math.floor(Math.random() * devices.length)],
+          browser: browsers[Math.floor(Math.random() * browsers.length)],
+          ipHash: crypto.randomUUID().substring(0, 32),
+        });
+      }
+    }
+
+    if (!existingCodes.has("pricing-pro")) {
+      for (let i = 0; i < 84; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - Math.floor(Math.random() * 30));
+        clicksToInsert.push({
+          id: crypto.randomUUID(),
+          linkId: link2Id,
+          timestamp: date,
+          country: countries[Math.floor(Math.random() * countries.length)],
+          referrer: referrers[Math.floor(Math.random() * referrers.length)],
+          device: devices[Math.floor(Math.random() * devices.length)],
+          browser: browsers[Math.floor(Math.random() * browsers.length)],
+          ipHash: crypto.randomUUID().substring(0, 32),
+        });
+      }
+    }
+
+    if (!existingCodes.has("newsletter-sub")) {
+      for (let i = 0; i < 39; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - Math.floor(Math.random() * 30));
+        clicksToInsert.push({
+          id: crypto.randomUUID(),
+          linkId: link3Id,
+          timestamp: date,
+          country: countries[Math.floor(Math.random() * countries.length)],
+          referrer: referrers[Math.floor(Math.random() * referrers.length)],
+          device: devices[Math.floor(Math.random() * devices.length)],
+          browser: browsers[Math.floor(Math.random() * browsers.length)],
+          ipHash: crypto.randomUUID().substring(0, 32),
+        });
+      }
+    }
+
+    if (clicksToInsert.length > 0) {
+      await db.insert(analytics).values(clicksToInsert);
+    }
+
+    return { success: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+    ) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "SERVER_ERROR" };
+  }
 }

@@ -12,6 +12,7 @@ import {
   UpdateLinkInput,
 } from "@/lib/validations";
 import { ZodError } from "zod";
+import { SUBSCRIPTION_PLANS } from "@/core/config";
 import { hashSha256 } from "@/lib/crypto";
 
 export async function getLinks(workspaceId: string) {

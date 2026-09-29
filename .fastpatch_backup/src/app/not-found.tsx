@@ -27,7 +27,7 @@ export default function NotFound() {
           Page Not Found
         </h2>
         <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-          The requested URL does not map to an active campaign shortcode or
+          The requested URL does not map to any active campaign shortcode or
           system resource. Check for typographical errors or return to base
           workspace.
         </p>

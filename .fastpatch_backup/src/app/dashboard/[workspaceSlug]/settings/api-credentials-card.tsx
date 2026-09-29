@@ -16,12 +16,13 @@ import { toast } from "sonner";
 
 interface ApiCredentialsProps {
   workspaceId: string;
-  initialApiKey?: string;
+  initialApiKey: string;
   origin: string;
 }
 
 export function ApiCredentialsCard({
   workspaceId,
+  initialApiKey,
   origin,
 }: ApiCredentialsProps) {
   const [showKey, setShowKey] = React.useState(false);

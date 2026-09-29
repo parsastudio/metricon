@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { seedMockData } from "@/actions/analytics";
 import { Button } from "@/components/ui/button";
-import { Database } from "lucide-react";
+import { Database, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface SeedButtonProps {

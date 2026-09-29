@@ -10,6 +10,7 @@ import {
   Lock,
   ExternalLink,
   Laptop,
+  Layers,
   FlaskConical,
 } from "lucide-react";
 

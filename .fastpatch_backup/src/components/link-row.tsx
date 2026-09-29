@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Pencil,
   QrCode,
+  FlaskConical,
   WifiOff,
 } from "lucide-react";
 import { LinkItem } from "@/lib/validations";
@@ -25,6 +26,7 @@ interface LinkRowProps {
   onToggleActive: (linkId: string, currentStatus: boolean) => void;
   onSelectQr: (url: string, title: string) => void;
   onSelectEdit: (link: LinkItem) => void;
+  onSelectSimulator: (link: LinkItem) => void;
   onDelete: (linkId: string) => void;
 }
 
@@ -38,6 +40,7 @@ export function LinkRow({
   onToggleActive,
   onSelectQr,
   onSelectEdit,
+  onSelectSimulator,
   onDelete,
 }: LinkRowProps) {
   const isOptimistic = link.id.startsWith("optimistic-");
@@ -150,6 +153,13 @@ export function LinkRow({
             />
           </button>
           <button
+            onClick={() => onSelectSimulator(link)}
+            title="Simulator / Test Scenarios"
+            className="text-primary hover:bg-primary/10 cursor-pointer rounded-lg p-1.5 transition-colors"
+          >
+            <FlaskConical className="size-4" />
+          </button>
+          <button
             onClick={() =>
               onSelectQr(
                 `${origin || "https://metricon.co"}/r/${workspacePrefix}/${link.shortCode}`,
@@ -157,6 +167,7 @@ export function LinkRow({
               )
             }
             className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg p-1.5 transition-colors"
+            title="Download QR Code"
           >
             <QrCode className="size-4" />
           </button>

@@ -33,7 +33,6 @@ interface LinkRowProps {
 export function LinkRow({
   link,
   workspacePrefix,
-  isPro,
   origin,
   copiedId,
   onCopy,

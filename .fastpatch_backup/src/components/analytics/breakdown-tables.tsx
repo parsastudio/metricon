@@ -54,18 +54,16 @@ export function BreakdownTablesSkeleton() {
   );
 }
 
-const emptySubscribe = () => () => {};
-
 export function BreakdownTables({
   countries,
   referrers,
   devices,
 }: BreakdownTablesProps) {
-  const mounted = React.useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
     return <BreakdownTablesSkeleton />;

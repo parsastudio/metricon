@@ -28,13 +28,12 @@ export function useOfflineQueue(
     ) => Promise<{ success: boolean; error?: string }>;
   }
 ) {
+  const [isOnline, setIsOnline] = useState<boolean>(true);
   const actionsRef = useRef(actions);
 
   useEffect(() => {
     actionsRef.current = actions;
   }, [actions]);
-
-  const isOnline = useState<boolean>(true)[0];
 
   const syncQueue = useCallback(async () => {
     const runSync = async () => {
@@ -146,16 +145,29 @@ export function useOfflineQueue(
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (navigator.onLine) {
+    const online = navigator.onLine;
+    setIsOnline(online);
+
+    if (online) {
       syncQueue();
     }
+
     const handleOnline = () => {
+      setIsOnline(true);
       toast.success("Online status restored. Aligning records...");
       syncQueue();
     };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning(
+        "Network connection disrupted. Safe local-first offline state enabled."
+      );
+    };
     window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
     return () => {
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, [workspaceId, syncQueue]);
 

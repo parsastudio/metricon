@@ -33,7 +33,14 @@ export function LinksTable({
   onToggleActive,
   onUpdateLink,
 }: LinksTableProps) {
+  const [prevLinks, setPrevLinks] = React.useState(initialLinks);
   const [linksList, setLinksList] = React.useState<LinkItem[]>(initialLinks);
+
+  if (initialLinks !== prevLinks) {
+    setPrevLinks(initialLinks);
+    setLinksList(initialLinks);
+  }
+
   const [searchTerm, setSearchTerm] = React.useState("");
   const [targetFilter, setTargetFilter] = React.useState<
     "all" | "standard" | "targeted"
@@ -47,10 +54,6 @@ export function LinksTable({
     title: string;
   } | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 300);
-
-  React.useEffect(() => {
-    setLinksList(initialLinks);
-  }, [initialLinks]);
 
   const handleDelete = async (linkId: string) => {
     if (linkId.startsWith("optimistic-")) {

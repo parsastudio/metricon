@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginUser } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Mail, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Sparkles, Mail, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { IS_DEMO_MODE } from "@/core/config";
 
@@ -72,7 +72,7 @@ function AuthContent() {
         <h2 className="text-2xl font-bold tracking-tight">Access Metricon</h2>
         <p className="text-muted-foreground text-xs">
           {IS_DEMO_MODE
-            ? "Sandbox mode is ACTIVE. Type any email to enter instantly."
+            ? "Sandbox mode is ACTIVE. Enter your email to enter instantly."
             : "Enter your email for secure tokenized passwordless entry."}
         </p>
       </div>

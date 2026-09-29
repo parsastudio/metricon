@@ -33,14 +33,12 @@ export function TimeSeriesSkeleton() {
   );
 }
 
-const emptySubscribe = () => () => {};
-
 export function TimeSeries({ data }: TimeSeriesProps) {
-  const mounted = React.useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
     return <TimeSeriesSkeleton />;

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { analytics } from "@/lib/schema";
-import { sql } from "drizzle-orm";
+import { eq, count, sql } from "drizzle-orm";
+import { recordClick } from "@/actions/analytics";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { after } from "next/server";
@@ -8,7 +9,7 @@ import { IS_DEMO_MODE } from "@/core/config";
 import { scrapeUrlMetadata } from "@/lib/metadata-scraper";
 import { getCachedWorkspace, getCachedLink } from "@/lib/cached-queries";
 import { resolveCountryFromHeaders, getClientIp } from "@/lib/geoip";
-import { getSaltedIpHash } from "@/lib/crypto";
+import { hashSha256, getSaltedIpHash } from "@/lib/crypto";
 import { generateUnlockSignature } from "@/actions/links-security";
 
 export const dynamic = "force-dynamic";
@@ -26,11 +27,13 @@ export default async function RedirectPage({
   const { __country, __device } = await searchParams;
 
   const workspace = await getCachedWorkspace(workspacePrefix);
+
   if (!workspace) {
     redirect("/expired");
   }
 
   const link = await getCachedLink(workspace.id, code);
+
   if (!link || !link.isActive) {
     redirect("/expired");
   }

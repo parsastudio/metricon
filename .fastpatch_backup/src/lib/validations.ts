@@ -121,7 +121,6 @@ export const linkSchema = z.object({
   isActive: z.boolean(),
   password: z.string().nullable().optional(),
   expiresAt: z.union([z.date(), z.string()]).nullable().optional(),
-  maxClicks: z.number().int().nullable().optional(),
   clicksCount: z.number().int(),
   iosUrl: z.string().nullable().optional(),
   androidUrl: z.string().nullable().optional(),
